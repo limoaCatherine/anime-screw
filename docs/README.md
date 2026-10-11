@@ -1,16 +1,36 @@
-# 拆封绘卷 AnimeScrew
+# 拆封绘卷 · 开发说明
+
+> 只想玩的话，不用看这里，到 [Releases](https://github.com/limoaCatherine/anime-screw/releases/latest) 下载解压即可（见根目录 README）。
 
 二次元拧螺丝解谜小游戏。画框里的插画被一层层木板、铜板、亚克力板钉住了，点螺丝把板子拆下来，最底下露出这一关的那块插画碎片；一幅画 10 块，拼齐了收进画册。
 
 - 纯 Canvas 2D + 原生 ES 模块，物理用 Matter.js 0.19 (vendor/matter.min.js)
 - `npm run build` → `dist/index.html`，双击就能玩 (file:// 下可运行，不需要服务器)
 - 竖屏 540×960 逻辑分辨率，手机优先，桌面浏览器 / Electron 桌面版同样能玩
-- 抖音小游戏版 (v1.2)：独立工程 `douyin/`，用 `npm run build:douyin` 生成 `douyin/dist/`。平台差异都在 `src/platform/{web,douyin}`，上架步骤见 `docs/抖音上架说明.md`。
-- 微信小游戏版 (v1.2)：独立工程 `wechat/`，用 `npm run build:wechat` 生成 `wechat/dist/` (交付时是「微信小游戏」文件夹)。平台层 `src/platform/wechat`，与抖音共用 `src/platform/mini` 与构建脚本 `tools/build_mini.mjs`；上架步骤见 `docs/微信上架说明.md`。
-- 广告：激励视频广告位 ID 填在 `douyin/douyin.config.json` / `wechat/wechat.config.json`，构建后在各自 `dist/game-config.js`。填了 ID，`AdService` 就走平台层 `createRewardedAd` (`tt.createRewardedVideoAd` / `wx.createRewardedVideoAd`)。没填 ID 时 (网页版、桌面版、抖音/微信首发版)：
-  - 所有「看广告」入口都隐藏；
-  - 每关有 1 次免费「再试一次」；
-  - 道具用完后，每种道具每天可以免费领 1 个。
+- 广告：网页版和桌面版没有广告位，所有「看广告」入口都隐藏；每关 1 次免费「再试一次」；道具用完后每种每天免费领 1 个。
+
+## 从源码运行 / 打包
+
+```bash
+npm install
+npm run build          # 网页版 → dist/index.html (双击即可玩)
+npm run desktop        # 用 Electron 直接跑桌面版
+npm run pack:win       # Windows 桌面版 → release/拆封绘卷/拆封绘卷.exe (Linux 上也能打)
+```
+
+发布到 GitHub Releases 的两个包：
+
+- `chaifeng-huijuan-windows.zip`：`release/拆封绘卷/` 整个文件夹，加上 `怎么玩.txt`，exe 旁边有 `licenses/`；
+- `chaifeng-huijuan-web.zip`：`dist/` 的内容，加上 `怎么玩.txt` 和 `licenses/`。
+
+## 可选：抖音 / 微信小游戏 (开发备忘)
+
+目前不在这两个平台发布。下面的工程保留着，以后需要时可以直接用：
+
+- 抖音小游戏：`douyin/`，`npm run build:douyin` → `douyin/dist/`，平台层 `src/platform/douyin`，上架资料见 `docs/抖音上架说明.md`。
+- 微信小游戏：`wechat/`，`npm run build:wechat` → `wechat/dist/`，平台层 `src/platform/wechat`，上架资料见 `docs/微信上架说明.md`。
+- 两者共用 `src/platform/mini` 和构建脚本 `tools/build_mini.mjs`。
+- 激励视频广告位 ID 填在 `douyin/douyin.config.json` / `wechat/wechat.config.json`。填了以后 `AdService` 会走平台层的 `createRewardedAd`；不填就和网页版一样，没有广告。
 
 ## 玩法
 

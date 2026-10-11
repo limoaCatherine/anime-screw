@@ -1,67 +1,62 @@
-# 拆封绘卷 · AnimeScrew
+# 拆封绘卷
 
-> 竖屏二次元拧螺丝解谜小游戏｜HTML5 Canvas + Matter.js｜30 关 / 3 幅原创插画
-> 网页版 + Windows 桌面版 + 抖音小游戏 + 微信小游戏｜v1.2.0｜出品：狸猫
+画框里的插画被木板、铜板、亚克力板一层层钉住了。把螺丝一颗颗拧下来，板子掉光，底下的画就露出来了。
 
-画框里的插画被一层层木板、铜板、亚克力板钉住。点螺丝把板子拆下来，最底下就露出这一关的插画碎片。一幅画 10 块，拼齐后收进画册。
+出品：狸猫
+
+## 下载 / 解压 / 双击
+
+到右边的 [**Releases**](https://github.com/limoaCatherine/anime-screw/releases/latest) 下载，不用安装任何东西：
+
+- **Windows 版**：下载 `chaifeng-huijuan-windows.zip`，解压后双击 `拆封绘卷\拆封绘卷.exe`。
+  - 第一次打开如果弹出「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」。
+  - 存档在 `%APPDATA%\AnimeScrew\save.json`，换新版本也不会丢。
+- **网页版**（任何系统都能玩）：下载 `chaifeng-huijuan-web.zip`，解压后双击里面的 `index.html`，用浏览器打开就能玩，不用联网。
+  - 进度存在浏览器里。换浏览器或清理浏览数据后，进度会丢。
 
 <p>
-<img src="docs/store/screenshot_01_主界面.jpg" width="180" alt="主界面">
-<img src="docs/store/screenshot_02_锁链与冰冻.jpg" width="180" alt="锁链与冰冻">
-<img src="docs/store/screenshot_03_满屏挑战.jpg" width="180" alt="满屏挑战">
-<img src="docs/store/screenshot_04_通关揭画.jpg" width="180" alt="通关揭画">
+<img src="docs/screenshots/menu.jpg" width="200" alt="主界面">
+<img src="docs/screenshots/chain-frost.jpg" width="200" alt="锁链与冰冻">
+<img src="docs/screenshots/reveal.jpg" width="200" alt="通关揭画">
+<img src="docs/screenshots/gallery.jpg" width="200" alt="画册">
 </p>
 
-## 快速开始
+## 怎么玩
 
-```bash
-npm install
-npm run build          # 网页版 → dist/index.html (双击即可玩)
-npm run desktop        # Electron 桌面版
-npm run pack:win       # Windows exe → release/
-npm run build:douyin   # 抖音小游戏 → douyin/dist/
-npm run build:wechat   # 微信小游戏 → wechat/dist/
-```
+- 点露在最上面的螺丝，它会飞进同色的盒子。
+  - 场上同时有两个盒子，各装 3 颗。
+  - 装满就合上，换下一个。
+- 没有同色的盒子时，螺丝先放进下面的 5 个临时孔。等同色盒子来了，它会自己飞过去。
+- 板子上的螺丝拧得只剩一颗时，板子会绕着它晃；一颗都不剩，板子就掉下去。
+- 临时孔塞满、再也放不下，这一关就失败了。每关有一次免费「再试一次」。
+- 每过一关，揭开插画的一块。10 块拼成一整幅，收进画册。
 
-测试命令：
+## 关卡
 
-- `npm test`：冒烟测试；
-- `npm run verify`：30 关可解性；
-- `npm run fuzz`：道具模糊测试；
-- `npm run test:play`：全关通关；
-- `npm run test:douyin` / `npm run test:wechat`：小游戏模拟环境，用触摸打完第 1 关；
-- `npm run test:looptrack`：BGM 无缝循环仿真。
+一共 30 关，分 3 章，每章对应一幅画：雨后的屋顶、温室、夜班电车。
 
-## 目录
+新的障碍会一个个登场：
 
-| 路径 | 内容 |
-|---|---|
-| `src/` | 游戏代码（所有平台共用） |
-| `src/platform/` | 平台层：`web`（网页/桌面）、`douyin`、`wechat`、`mini`（两个小游戏共用） |
-| `assets/` | 插画、角色、语音（VOICEVOX）、BGM、预渲染音效 |
-| `desktop/` | Electron 外壳 |
-| `douyin/`、`wechat/` | 小游戏工程配置（`*.config.json`：AppID 和激励视频广告位 ID），以及构建、测试报告 |
-| `tools/` | 关卡生成与校验、构建、打包、测试脚本 |
-| `docs/` | 详细说明、抖音和微信上架说明、商店素材、第三方许可 |
+- **玻璃**：看得见底下的螺丝，但一样压着它们。
+- **锁链**：被链子拴住的螺丝拧不动，先拧掉挂锁那颗。
+- **冰冻**：在旁边拧螺丝，冰会一层层裂开。
+- **钥匙锁**：同色的钥匙钉收进盒子，锁才会开。
+- **炸弹**：数字是剩下的步数，归零前必须拧掉。
+- **问号螺丝**：拧下来才知道是什么颜色。
+- **吊着的板**：拧掉挂钉，整块板连同上面的螺丝一起收走。
+- **双层螺丝**：要拧两次。
 
-详细的设计和实现说明见 [docs/README.md](docs/README.md)。上架流程见：
+卡住的时候可以用道具：退一步、加孔、螺丝刀、小锤、换盒。道具用完后，每种每天可以免费领一个。
 
-- [docs/抖音上架说明.md](docs/抖音上架说明.md)
-- [docs/微信上架说明.md](docs/微信上架说明.md)
+## 配音与署名
 
-## 广告
+- 角色语音：VOICEVOX:四国めたん（铆铆）、VOICEVOX:春日部つむぎ（小满）、VOICEVOX:東北きりたん（苏枝）、VOICEVOX:冥鳴ひまり（阿蘅）。
+  - 各角色的使用条款放在下载包的 `licenses` 文件夹里。
+- 物理引擎：Matter.js（MIT）；桌面版外壳：Electron（MIT）。
+- 背景音乐、插画背景和音效都是原创。
 
-激励视频广告位 ID 为空时（网页版、桌面版、小游戏首发版）：
+出品：狸猫
 
-- 不显示任何「看广告」按钮；
-- 每关有 1 次免费「再试一次」；
-- 道具用完后，每种每天可免费领 1 个。
+---
 
-填上广告位 ID 后，激励视频会自动启用。
-
-## 署名与许可
-
-- 出品：狸猫。
-- 语音：VOICEVOX:四国めたん / 春日部つむぎ / 東北きりたん / 冥鳴ひまり（按各角色规约署名，全文见 `docs/licenses/`）。
-- 物理引擎：Matter.js（MIT）。
-- 本仓库代码与美术资源未开源授权（UNLICENSED）。
+想自己改代码或重新打包，请看 [docs/README.md](docs/README.md)。
