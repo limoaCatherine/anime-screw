@@ -46,7 +46,6 @@ npm run desktop        # Electron 桌面版
 npm run pack:win       # 打包 Windows x64
 ```
 
-目录结构、声音规范与存档说明见 [docs/README.md](docs/README.md)；早期策划案见 [docs/design/策划案-v0.1.md](docs/design/策划案-v0.1.md)（立项阶段文档，引擎选型、排期等与最终实现有出入，以代码为准）。
 
 ## 关于开发方式
 
