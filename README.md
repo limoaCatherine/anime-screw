@@ -1,9 +1,11 @@
 # 拆封绘卷
 
 **下载 Windows 版：[chaifeng-huijuan-windows.zip](https://github.com/limoaCatherine/anime-screw/releases/latest/download/chaifeng-huijuan-windows.zip)**
+
 **下载网页版：[chaifeng-huijuan-web.zip](https://github.com/limoaCatherine/anime-screw/releases/latest/download/chaifeng-huijuan-web.zip)**
 
 解压后双击 `拆封绘卷.exe`（Windows 版）或 `index.html`（网页版）就能玩，不用安装，也不用联网。
+
 Windows 弹出「Windows 已保护你的电脑」时，点「更多信息 → 仍要运行」。
 
 <p>
