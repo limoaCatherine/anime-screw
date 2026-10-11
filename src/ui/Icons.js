@@ -100,6 +100,17 @@ export const Icons = {
     line(ctx, [[-5 * k, -10 * k], [-5 * k, 8 * k]], 1.4 * k, '#fbf4e6');
     line(ctx, [[5 * k, -8 * k], [5 * k, 10 * k]], 1.4 * k, '#fbf4e6');
   },
+  gift(ctx, s) {
+    const k = s / 44;
+    ctx.fillStyle = '#c94f3d';
+    ctx.fillRect(-11 * k, -3 * k, 22 * k, 15 * k);
+    ctx.fillStyle = '#e0614c';
+    ctx.fillRect(-13 * k, -8 * k, 26 * k, 6 * k);
+    ctx.fillStyle = '#ffd34d';
+    ctx.fillRect(-2 * k, -8 * k, 4 * k, 20 * k);
+    line(ctx, [[0, -8 * k], [-7 * k, -14 * k], [-9 * k, -9 * k], [0, -8 * k]], 2.4 * k, '#ffd34d');
+    line(ctx, [[0, -8 * k], [7 * k, -14 * k], [9 * k, -9 * k], [0, -8 * k]], 2.4 * k, '#ffd34d');
+  },
   share(ctx, s) {
     const k = s / 44;
     const dot = (x, y) => { ctx.beginPath(); ctx.arc(x * k, y * k, 4 * k, 0, Math.PI * 2); ctx.fill(); };

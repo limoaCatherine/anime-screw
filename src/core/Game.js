@@ -1,6 +1,7 @@
 // 游戏主类：持有 Canvas、事件总线、全局服务 (存档/音效/音乐/语音/广告) 与场景管理器，驱动主循环。
 // 另外管一个全局弹窗栈 (设置、确认框、制作人员…) 和广告占位层，它们盖在任何场景之上。
 import { GameConfig } from '../config/GameConfig.js';
+import { platform } from '../platform/index.js';
 import { EventBus } from './EventBus.js';
 import { SceneManager } from './SceneManager.js';
 import { AssetLoader } from './AssetLoader.js';
@@ -27,6 +28,8 @@ export class Game {
     this.config = GameConfig;
     this.time = 0;
     this.pixelScale = 1;
+    this.view = { scale: 1, offX: 0, offY: 0, letterbox: false };
+    this.platform = platform;
 
     this.events = new EventBus();
     this.assets = new AssetLoader();
@@ -44,25 +47,22 @@ export class Game {
     for (const S of [BootScene, MenuScene, LevelSelectScene, GameScene, GalleryScene]) this.scenes.register(new S(this));
 
     this.resize = this.resize.bind(this);
-    window.addEventListener('resize', this.resize);
-    window.addEventListener('orientationchange', this.resize);
-    document.addEventListener('visibilitychange', () => this.events.emit(document.hidden ? 'app:hidden' : 'app:visible'));
+    platform.onResize(this.resize);
+    // 切到后台 (网页 visibilitychange / 抖音 tt.onHide)：暂停主循环与语音；回到前台 (tt.onShow) 继续
+    this.hidden = false;
+    platform.onVisibility((hidden, info) => {
+      this.hidden = hidden;
+      if (hidden) this.voice.stop();
+      else this.last = platform.now();
+      this.events.emit(hidden ? 'app:hidden' : 'app:visible', info);
+    });
     this.resize();
   }
 
-  /** 等比缩放到窗口 (9:16)，按设备像素比提高清晰度 */
+  /** 等比缩放 (9:16)，按设备像素比提高清晰度；平台层决定画布尺寸与留边 */
   resize() {
-    const vw = window.innerWidth || this.width;
-    const vh = window.innerHeight || this.height;
-    const scale = Math.min(vw / this.width, vh / this.height);
-    const cssW = Math.floor(this.width * scale);
-    const cssH = Math.floor(this.height * scale);
-    this.canvas.style.width = `${cssW}px`;
-    this.canvas.style.height = `${cssH}px`;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    this.canvas.width = Math.max(1, Math.round(cssW * dpr));
-    this.canvas.height = Math.max(1, Math.round(cssH * dpr));
-    this.pixelScale = this.canvas.width / this.width;
+    this.view = platform.layout(this.canvas, this.width, this.height);
+    this.pixelScale = this.view.scale;
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = 'high';
   }
@@ -84,14 +84,15 @@ export class Game {
 
   start() {
     this.scenes.change('boot', {}, { transition: false });
-    this.last = performance.now();
-    const loop = (now) => {
+    this.last = platform.now();
+    const loop = () => {
+      const now = platform.now();
       const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
       this.last = now;
-      this.tick(dt);
-      requestAnimationFrame(loop);
+      if (!this.hidden) this.tick(dt);
+      platform.raf(loop);
     };
-    requestAnimationFrame(loop);
+    platform.raf(loop);
   }
 
   tick(dt) {
@@ -106,12 +107,30 @@ export class Game {
     for (const t of this.toasts) t.t += dt;
     this.toasts = this.toasts.filter((t) => t.t < t.time);
     const ctx = this.ctx;
-    ctx.setTransform(this.pixelScale, 0, 0, this.pixelScale, 0, 0);
-    ctx.clearRect(0, 0, this.width, this.height);
+    const v = this.view;
+    if (v.letterbox) {
+      // 抖音：画布铺满全屏，逻辑画面四周的留边涂成墙色，并裁掉画面外的绘制
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = GameConfig.letterboxColor || '#2b211b';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.setTransform(v.scale, 0, 0, v.scale, v.offX, v.offY);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, this.width, this.height); ctx.clip();
+    } else {
+      ctx.setTransform(v.scale, 0, 0, v.scale, v.offX, v.offY);
+      ctx.clearRect(0, 0, this.width, this.height);
+    }
     this.scenes.render(ctx);
     for (const m of this.modals) m.render(ctx, dt);
     if (this.adOverlay.active) this.adOverlay.render(ctx, dt);
     this.renderToasts(ctx);
+    if (v.letterbox) ctx.restore();
+  }
+
+  /** 画布像素 → 逻辑坐标 */
+  toLogical(px, py) {
+    const v = this.view;
+    return { x: (px - v.offX) / v.scale, y: (py - v.offY) / v.scale };
   }
 
   renderToasts(ctx) {

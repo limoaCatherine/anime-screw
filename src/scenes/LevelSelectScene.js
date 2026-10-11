@@ -1,5 +1,6 @@
 // 选关地图：三幅画从上到下排开，每幅画下面一条钉子小路 (10 关)。拖动滚动，点钉子进关。
 import { Scene } from '../core/Scene.js';
+import { platform } from '../platform/index.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { LEVELS, CHAPTERS } from '../config/LevelConfig.js';
 import { CHARACTERS } from '../config/VoiceConfig.js';
@@ -40,7 +41,7 @@ export class LevelSelectScene extends Scene {
 
   onPointerDown(p) {
     if (super.onPointerDown(p)) return true;
-    this.drag = { y: p.y, start: p.y, x: p.x, scroll: this.scroll, t: performance.now(), moved: 0, lastY: p.y };
+    this.drag = { y: p.y, start: p.y, x: p.x, scroll: this.scroll, t: platform.now(), moved: 0, lastY: p.y };
     this.vel = 0;
     return true;
   }
@@ -51,7 +52,7 @@ export class LevelSelectScene extends Scene {
     const d = this.drag;
     this.scroll = Math.max(-60, Math.min(this.maxScroll + 60, d.scroll - (p.y - d.start)));
     d.moved = Math.max(d.moved, Math.abs(p.y - d.start));
-    const now = performance.now();
+    const now = platform.now();
     this.vel = (d.lastY - p.y) / Math.max(1, now - d.t) * 1000;
     d.lastY = p.y; d.t = now;
   }

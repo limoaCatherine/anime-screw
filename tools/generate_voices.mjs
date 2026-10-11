@@ -1,7 +1,7 @@
 // 用 VOICEVOX 引擎合成角色语音 -> assets/audio/voice/<id>.mp3  (v1.1：按情绪合成，更像真人)
 // 台词 / 情绪 / 重音词：src/config/VoiceConfig.js (单一数据源)。
 // 每句的处理：
-//   1. 按情绪 emo 选风格 (角色有多个风格时，如猫使ビィ：おちつき / 人見知り / つよつよ)
+//   1. 按情绪 emo 选风格 (角色有多个风格时，如四国めたん：あまあま / ツンツン)
 //   2. 语速 1.12~1.25 倍、抑扬 intonationScale 1.15~1.5、句首/句尾静音缩短、句中停顿上限 0.18 s
 //   3. emph 里的词 (片假名) 所在的语调短语整体抬高音高、元音略拉长 = 重音
 //   4. tools/voice_post.py：裁静音、(可选) 句前一口吸气、小房间混响
@@ -42,7 +42,7 @@ const kata = (s) => s.replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.c
 
 async function synth(line, ch) {
   const e = { ...EMOTION[line.emo || 'calm'], ...(line.tune || {}) };
-  const styleId = (ch.voice.styles && ch.voice.styles[line.emo]) || ch.voice.styleId;
+  const styleId = (ch.voice.styles && ch.voice.styles[line.emo]) ?? ch.voice.styleId;
   const q = await (await post(`${ENGINE}/audio_query?${new URLSearchParams({ text: line.tts, speaker: styleId })}`)).json();
   q.speedScale = e.speed + (CHAR_SPEED[line.who] || 0);
   q.pitchScale = e.pitch;

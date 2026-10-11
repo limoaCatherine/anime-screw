@@ -1,31 +1,60 @@
-# 依赖与构建产物
+# ---------- 依赖 ----------
 node_modules/
-dist/
-build/
-release/
-out/
-*.exe
-*.zip
-*.7z
-*.asar
 
-# 本地预览打包产物
+# ---------- 构建产物 (都能用 npm 脚本重新生成) ----------
+# npm run build (网页版)
+/dist/
+# Electron 打包中间产物
+/build/
+# npm run pack:win / pack:linux (exe 等)
+/release/
+# npm run build:douyin
+douyin/dist/
+# npm run build:wechat
+wechat/dist/
+out/
+# 测试脚本截图
+tools/_shots/
 tools/preview/bundle.js
 
-# Python 缓存
+# ---------- 交付用压缩包 / 分块 / 大二进制 ----------
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.part[0-9]*
+*.chunk*
+*_chunks/
+chunks/
+*.exe
+*.dll
+*.asar
+*.dmg
+*.AppImage
+*.msi
+*.blockmap
+
+# ---------- 本地工具 / 缓存 ----------
+.voicevox/
 __pycache__/
 *.pyc
 .venv/
+*.log
 
-# 环境变量 / 密钥
+# ---------- 密钥 / 私有配置 ----------
 .env
 .env.*
 *.pem
 *.key
+*.p12
+*.pfx
+project.private.config.json
 
-# 系统与编辑器
+# ---------- 系统与编辑器 ----------
 .DS_Store
 Thumbs.db
+desktop.ini
 .vscode/
 .idea/
-*.log

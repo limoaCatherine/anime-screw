@@ -7,7 +7,7 @@
 // 每关最多 2 句 (低优先级只占 1 句)；同一场合几种说法轮着用，最近说过的不重复。
 
 export const CHARACTERS = {
-  riri:  { name: '铆铆', key: 'girl_01', color: '#c27a45', role: '修复师', voice: { speaker: '猫使ビィ', style: 'ノーマル', styleId: 58, styles: { happy: 58, tease: 58, calm: 59, sad: 59, gentle: 59, shy: 60, excited: 112, urgent: 112 } }, credit: 'VOICEVOX:猫使ビィ' },
+  riri:  { name: '铆铆', key: 'girl_01', color: '#c27a45', role: '修复师', voice: { speaker: '四国めたん', style: 'ノーマル', styleId: 2, styles: { happy: 0, excited: 0, gentle: 0, shy: 0, tease: 6, urgent: 6, calm: 2, sad: 2 } }, credit: 'VOICEVOX:四国めたん' },
   xm:    { name: '小满', key: 'girl_02', color: '#f08a2c', role: '屋顶上的女孩', voice: { speaker: '春日部つむぎ', style: 'ノーマル', styleId: 8 }, credit: 'VOICEVOX:春日部つむぎ' },
   suzhi: { name: '苏枝', key: 'girl_04', color: '#4f9a52', role: '温室的主人', voice: { speaker: '東北きりたん', style: 'ノーマル', styleId: 108 }, credit: 'VOICEVOX:東北きりたん' },
   aheng: { name: '阿蘅', key: 'girl_03', color: '#3d4a8a', role: '末班车的乘客', voice: { speaker: '冥鳴ひまり', style: 'ノーマル', styleId: 14 }, credit: 'VOICEVOX:冥鳴ひまり' },
@@ -15,7 +15,7 @@ export const CHARACTERS = {
 
 // 优先级：1 开场闲聊 / 2 连击夸奖 / 3 提醒 (孔快满、炸弹、复活) / 4 通关失败 / 5 整幅画完成
 // v1.1 语音重做：台词更短更口语 (えっ、よしっ、うそっ…)，每句标情绪 emo，tools/generate_voices.mjs 按情绪选
-// 风格 (角色有的话，如猫使ビィ的 おちつき/人見知り/つよつよ) 并调语速 (1.15~1.25 倍)、抑扬、句首句尾静音，
+// 风格 (角色有的话，如四国めたん的 あまあま/ツンツン) 并调语速 (1.15~1.25 倍)、抑扬、句首句尾静音，
 // emph 里的词单独抬音高做重音；group 相同的是同一种场合的几种说法，轮着用，不会老听同一句。
 // 情绪：happy 开心 / excited 兴奋 / calm 平静 / gentle 温柔 / urgent 着急 / sad 失落 / shy 害羞 / tease 调皮
 const L = (id, who, priority, emo, text, zh, extra = {}) => ({
@@ -24,7 +24,7 @@ const L = (id, who, priority, emo, text, zh, extra = {}) => ({
 });
 
 export const VOICE_LINES = [
-  // 铆铆 (修复师，带着你拆画) —— 猫使ビィ：ノーマル / おちつき / 人見知り / つよつよ
+  // 铆铆 (修复师，带着你拆画) —— 四国めたん：ノーマル / あまあま / ツンツン (v1.2 起替换猫使ビィ：其条款要求企业商用前先联系)
   L('riri_hello', 'riri', 1, 'happy', 'えへへ、よろしくね！', '嘿嘿，请多关照！', { emph: ['ヨロシク'], breath: true }),
   L('riri_tip', 'riri', 1, 'calm', 'ねえ、上の板からだよ', '喂，先拆上面的板哦', { emph: ['ウエ'] }),
   L('riri_holes', 'riri', 3, 'urgent', 'えっ、穴あと一個だよ！', '诶，孔只剩一个了！', { emph: ['イッコ'], breath: true }),

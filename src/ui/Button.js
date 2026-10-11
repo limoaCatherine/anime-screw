@@ -1,5 +1,6 @@
 // 画布按钮：按下缩放、悬停高亮；样式 primary (铜色) / secondary (纸色) / ghost / icon / item。
 import { GameConfig } from '../config/GameConfig.js';
+import { platform } from '../platform/index.js';
 import { roundRectPath, drawText, shade } from './draw.js';
 
 export class Button {
@@ -74,7 +75,7 @@ export class Button {
       ctx.beginPath(); ctx.arc(0, -8, r, 0, Math.PI * 2);
       ctx.lineWidth = 3; ctx.strokeStyle = this.active ? '#e2683a' : (this.enabled ? C.copper : '#8b8178'); ctx.stroke();
       if (this.active) {
-        ctx.beginPath(); ctx.arc(0, -8, r + 5 + Math.sin(performance.now() / 120) * 1.5, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(0, -8, r + 5 + Math.sin(platform.now() / 120) * 1.5, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(226,104,58,0.7)'; ctx.lineWidth = 2; ctx.stroke();
       }
       ctx.save(); ctx.translate(0, -8);

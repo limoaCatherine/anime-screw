@@ -8,14 +8,15 @@ import { PuzzleSystem } from '../systems/PuzzleSystem.js';
 import { EffectSystem } from '../systems/EffectSystem.js';
 import { SubtitleSystem } from '../systems/SubtitleSystem.js';
 import { pointInPoly } from '../systems/geom.js';
-import { shareChapter } from '../systems/ShareService.js';
+import { shareChapter, shareRecording } from '../systems/ShareService.js';
+import { platform } from '../platform/index.js';
 import { renderBoard, drawBoard, MATERIALS } from '../render/BoardArt.js';
 import { drawScrew, drawChain, drawRope } from '../render/ScrewArt.js';
 import { TrayView } from '../render/TrayView.js';
 import { drawCG, drawFrame, fragmentRect } from '../render/CGView.js';
 import { Button } from '../ui/Button.js';
 import { Icons } from '../ui/Icons.js';
-import { Modal, SettingsPanel, TipCard } from '../ui/Panels.js';
+import { Modal, SettingsPanel, TipCard, today } from '../ui/Panels.js';
 import { drawText, drawWall, drawPanel, dimScreen, roundRectPath, ease, hexA, drawParagraph } from '../ui/draw.js';
 
 const W = GameConfig.width; const H = GameConfig.height;
@@ -44,7 +45,7 @@ export class GameScene extends Scene {
     for (const b of this.puzzle.boards.boards) this.arts.set(b.id, renderBoard(b));
     this.tray = new TrayView(g, g.events);
     this.tray.reset(this.puzzle);
-    this.tray.thirdOffer = this.L.thirdBox && this.puzzle.box.slots.length < 3;
+    this.tray.thirdOffer = this.L.thirdBox && this.puzzle.box.slots.length < 3 && this.game.ads.enabled;   // 没有广告位就不出现
     this.fx = new EffectSystem();
     if (this.subs) this.subs.destroy();
     this.subs = new SubtitleSystem(g);
@@ -73,6 +74,7 @@ export class GameScene extends Scene {
     this.makeButtons();
     this.bindEvents();
     g.events.emit('puzzle:start', { level });
+    if (platform.recorder) platform.recorder.start();      // 抖音：每关录屏，通关后可以分享
 
     // 开场：关名 → 角色一句话 (+语音) → 新机制提示卡
     this.timeline = [
@@ -82,6 +84,7 @@ export class GameScene extends Scene {
   }
 
   exit() {
+    if (platform.recorder && platform.recorder.recording) platform.recorder.stop(false);
     if (this.mode && this.modePaid === 'ad') this.game.save.addItem(this.mode, 1);   // 看广告拿的道具没用掉，退出时存起来
     this.mode = null;
     if (this.puzzle) this.puzzle.destroy();
@@ -348,6 +351,17 @@ export class GameScene extends Scene {
     return { can, have, used, def };
   }
 
+  /** 没有广告位时：每种道具每天可以免费领 1 个 */
+  freeItemAvailable(key) {
+    return !this.game.ads.enabled && GameConfig.dailyFreeItem && this.game.save.get(`freeItem_${key}`, '') !== today();
+  }
+
+  /** 库存为 0 时还能不能补一个 (看广告 / 今日免费) */
+  canRefill(key) { return this.game.ads.enabled || this.freeItemAvailable(key); }
+
+  /** 复活：有广告时每关 revivesPerLevel 次 (看广告)；没有广告时每关 freeRetriesPerLevel 次免费「再试一次」 */
+  get reviveLimit() { return this.game.ads.enabled ? GameConfig.revivesPerLevel : GameConfig.freeRetriesPerLevel; }
+
   itemDisabledHint(key) {
     const st = this.itemState(key);
     if (st.locked) { this.game.toast(`${GameConfig.items[key].name}${st.locked}解锁`); return; }
@@ -383,6 +397,23 @@ export class GameScene extends Scene {
       const r = run();
       if (r === true) g.save.addItem(key, -1);
       if (r === 'mode') this.modePaid = 'stock';
+      return;
+    }
+    // 没有库存、也没有广告位：每天免费领一次
+    if (!g.ads.enabled) {
+      if (!this.freeItemAvailable(key)) { g.toast(`${st.def.name}用完了，明天还能免费领一个`); return; }
+      g.pushModal(new AdAskPanel(g, {
+        title: `${st.def.name}用完了`,
+        text: '每种道具每天可以免费领一个，现在领吗？',
+        ok: '免费领取',
+        onOk: () => {
+          g.save.set(`freeItem_${key}`, today());
+          g.events.emit('item:freeDaily', { key });
+          const r = run();
+          if (r === 'mode') this.modePaid = 'ad';           // 领了没用掉，退出时存起来
+          else if (r === false) g.save.addItem(key, 1);     // 这次没用成 (比如没什么可换的)，存进库存
+        },
+      }));
       return;
     }
     // 没有库存：看个广告拿一次
@@ -468,9 +499,10 @@ export class GameScene extends Scene {
 
   revive() {
     const g = this.game;
-    if (this.reviving || this.puzzle.status !== 'fail' || this.revives >= GameConfig.revivesPerLevel) return;   // 连点两下只算一次
+    if (this.reviving || this.puzzle.status !== 'fail' || this.revives >= this.reviveLimit) return;   // 连点两下只算一次
     this.reviving = true;
-    g.ads.showRewardedAd('revive').then((ok) => {
+    const free = !g.ads.enabled;   // 没有广告位：免费「再试一次」
+    (free ? Promise.resolve(true) : g.ads.showRewardedAd('revive')).then((ok) => {
       this.reviving = false;
       if (!ok) { g.toast('没看完，就不算了'); return; }
       if (!this.puzzle || this.puzzle.status !== 'fail') return;
@@ -510,6 +542,7 @@ export class GameScene extends Scene {
   }
 
   showWinPanel() {
+    if (platform.recorder && platform.recorder.recording) platform.recorder.stop(true);   // 录到揭画为止，留给"分享通关录屏"
     this.game.pushModal(new WinPanel(this.game, this));
   }
 
@@ -775,7 +808,7 @@ export class GameScene extends Scene {
       b.locked = st.locked || null;
       b.enabled = !st.locked && !!st.can;
       b.active = this.mode === b.key;
-      b.badge = st.locked ? null : (st.have > 0 ? st.have : '+');
+      b.badge = st.locked ? null : (st.have > 0 ? st.have : this.canRefill(b.key) ? '+' : 0);
       b.render(ctx, 1 / 60);
     }
   }
@@ -815,16 +848,17 @@ class FailPanel extends Modal {
     this.scene = scene;
     const reason = scene.puzzle.failReason;
     this.info = FAIL_TEXT[reason] || FAIL_TEXT.stuck;
-    const canRevive = scene.revives < GameConfig.revivesPerLevel;
+    const canRevive = scene.revives < scene.reviveLimit;
     let y = 560;
     if (canRevive) {
-      const label = reason === 'bomb' ? `看个广告，引信多烧${GameConfig.bombReviveSteps}步` : reason === 'stuck' ? '看个广告，送一次螺丝刀' : '看个广告，多开一个孔';
+      const effect = reason === 'bomb' ? `引信多烧${GameConfig.bombReviveSteps}步` : reason === 'stuck' ? '送一次螺丝刀' : '多开一个孔';
+      const label = game.ads.enabled ? `看个广告，${effect}` : `再试一次（${effect}）`;
       this.btn({ x: W / 2, y, w: 330, h: 60, style: 'primary', label, fontSize: 20, onClick: () => scene.revive() });
       y += 72;
     }
     const undo = scene.itemState('undo');
-    if (!undo.locked && undo.can) {
-      this.btn({ x: W / 2, y, w: 330, h: 52, style: 'secondary', label: `退一步${undo.have > 0 ? `（还有 ${undo.have} 次）` : '（看广告）'}`, fontSize: 19, onClick: () => scene.useItem('undo') });
+    if (!undo.locked && undo.can && (undo.have > 0 || scene.canRefill('undo'))) {
+      this.btn({ x: W / 2, y, w: 330, h: 52, style: 'secondary', label: `退一步${undo.have > 0 ? `（还有 ${undo.have} 次）` : game.ads.enabled ? '（看广告）' : '（今日免费）'}`, fontSize: 19, onClick: () => scene.useItem('undo') });
       y += 64;
     }
     this.btn({ x: W / 2, y, w: 330, h: 52, style: 'secondary', label: '重来', fontSize: 20, onClick: () => game.scenes.change('game', { level: scene.index }) });
@@ -838,7 +872,7 @@ class FailPanel extends Modal {
     drawPanel(ctx, 50, 400, W - 100, this.bottom - 400 + 10, 22);
     drawText(ctx, this.info.title, W / 2, 446, { size: 30, serif: true, color: GameConfig.colors.danger });
     drawText(ctx, this.info.text, W / 2, 490, { size: 15, color: GameConfig.colors.inkLight, weight: 'normal', maxWidth: W - 140 });
-    if (this.scene.revives >= GameConfig.revivesPerLevel) drawText(ctx, '这关的复活次数用完了', W / 2, 516, { size: 13, color: GameConfig.colors.inkLight, weight: 'normal' });
+    if (this.scene.revives >= this.scene.reviveLimit) drawText(ctx, this.game.ads.enabled ? '这关的复活次数用完了' : '这关的「再试一次」用过了', W / 2, 516, { size: 13, color: GameConfig.colors.inkLight, weight: 'normal' });
     this.renderButtons(ctx, dt);
     ctx.restore();
   }
@@ -853,7 +887,13 @@ class WinPanel extends Modal {
     this.btn({ x: W / 2, y: 790, w: 300, h: 62, style: 'primary', label: last ? '去画册看看' : chapterEnd ? '去下一幅画' : '下一块', fontSize: 26, onClick: () => { this.close(); scene.nextLevel(); } });
     this.btn({ x: W / 2 - 80, y: 866, w: 144, h: 50, style: 'secondary', label: '画册', fontSize: 19, onClick: () => game.scenes.change('gallery', { chapter: scene.chIdx, from: 'select' }) });
     this.btn({ x: W / 2 + 80, y: 866, w: 144, h: 50, style: 'secondary', label: '选关', fontSize: 19, onClick: () => game.scenes.change('select', { focus: scene.index + 1 }) });
-    this.share = this.btn({ x: W / 2, y: 724, w: 240, h: 40, style: 'ghost', label: '给朋友看看这幅画', fontSize: 16, onClick: () => shareChapter(game, scene.chIdx) });
+    if (platform.recorder) {
+      // 抖音：录屏分享 + 分享这幅画，两个并排
+      this.btn({ x: W / 2 - 112, y: 724, w: 210, h: 40, style: 'ghost', label: '分享通关录屏', fontSize: 16, onClick: () => shareRecording(game, scene.chIdx) });
+      this.share = this.btn({ x: W / 2 + 112, y: 724, w: 210, h: 40, style: 'ghost', label: '给朋友看看这幅画', fontSize: 16, onClick: () => shareChapter(game, scene.chIdx) });
+    } else {
+      this.share = this.btn({ x: W / 2, y: 724, w: 240, h: 40, style: 'ghost', label: '给朋友看看这幅画', fontSize: 16, onClick: () => shareChapter(game, scene.chIdx) });
+    }
   }
   render(ctx, dt) {
     const sc = this.scene;

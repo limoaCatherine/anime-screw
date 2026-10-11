@@ -1,24 +1,23 @@
-// "给朋友看看这幅画"：抖音里走 tt.shareAppMessage；桌面版存一张 PNG 到"图片"文件夹；
+// "给朋友看看这幅画"：抖音 / 微信小游戏走 shareAppMessage (平台层 shareMessage)；桌面版存一张 PNG 到"图片"文件夹；
 // 网页里生成一张 PNG 下载 (file:// 打开时浏览器不让读图，就提示截图)。
 import { CHAPTERS } from '../config/LevelConfig.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { drawCG, drawFrame } from '../render/CGView.js';
 import { drawText } from '../ui/draw.js';
+import { platform } from '../platform/index.js';
 
 export function shareChapter(game, c) {
   const ch = CHAPTERS[c];
   const n = game.save.fragmentsOf(c);
   const title = n >= 10 ? `我把《${ch.title}》整幅拆出来了` : `《${ch.title}》拆到 ${n}/10 了`;
-  // eslint-disable-next-line no-undef
-  if (typeof tt !== 'undefined' && tt.shareAppMessage) {
-    // eslint-disable-next-line no-undef
-    tt.shareAppMessage({ title, query: `chapter=${c}`, fail: () => game.toast('没分享出去，再试一次') });
+  if (platform.shareMessage) {
+    // 抖音 tt.shareAppMessage / 微信 wx.shareAppMessage (平台层)
+    if (!platform.shareMessage({ title, query: `chapter=${c}`, fail: () => game.toast('没分享出去，再试一次') })) game.toast('截个图发给朋友吧');
     return;
   }
   let url = null;
   try {
-    const cv = document.createElement('canvas');
-    cv.width = 600; cv.height = 860;
+    const cv = platform.createCanvas(600, 860);
     const g = cv.getContext('2d');
     g.fillStyle = '#4a3a2e'; g.fillRect(0, 0, 600, 860);
     const fw = 460; const fh = fw * (891 / 726);
@@ -42,4 +41,18 @@ export function shareChapter(game, c) {
     return;
   }
   game.toast('截个图发给朋友吧');
+}
+
+/** 抖音：把这一关的录屏发成抖音视频 (tt.shareAppMessage channel:'video' + extra.videoPath) */
+export function shareRecording(game, c) {
+  const rec = platform.recorder;
+  const v = rec && rec.video;
+  if (!v || !platform.shareVideo) { game.toast('这次没录到，下一关再试试'); return; }
+  const ch = CHAPTERS[c];
+  platform.shareVideo({
+    title: `《${GameConfig.title}》拆螺丝揭开《${ch.title}》`,
+    desc: '一颗颗拧下来，画就露出来了',
+    videoPath: v.path,
+    topics: [GameConfig.title, '拆螺丝'],
+  }).then((ok) => game.toast(ok ? '发出去啦' : '没发出去，再试一次'));
 }

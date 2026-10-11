@@ -6,6 +6,8 @@
 // - say() 传的是"场合" (group)：同一场合有几种说法时轮着用，最近 noRepeatWithin 句里说过的不再选
 // - 播放时发 voice:start / voice:end，BgmSystem 据此压低音乐
 // - 音量 = 总音量 × 语音音量；关掉"语音"后字幕照常显示
+// - 播放器由平台层创建；小游戏 (platform.isMini) 不预加载 36 个 InnerAudioContext，播放时现建、播完销毁
+import { platform } from '../platform/index.js';
 import { VOICE_BY_ID, VOICE_GROUPS, VOICE_LINES, VoiceConfig, CHARACTERS } from '../config/VoiceConfig.js';
 
 export class VoiceSystem {
@@ -32,6 +34,11 @@ export class VoiceSystem {
   preload(onProgress = () => {}, timeoutMs = 3500) {
     let done = 0;
     const total = VOICE_LINES.length;
+    if (platform.isMini) {
+      for (const line of VOICE_LINES) this.clips[line.id] = { el: null, state: 'lazy', src: platform.assetPath(line.file) };
+      onProgress(1);
+      return Promise.resolve();
+    }
     return Promise.all(VOICE_LINES.map((line) => new Promise((resolve) => {
       let settled = false;
       const finish = (state) => {
@@ -42,13 +49,13 @@ export class VoiceSystem {
         resolve();
       };
       try {
-        const el = new Audio();
+        const el = platform.createAudio();
         el.preload = 'auto';
         this.clips[line.id] = { el, state: 'loading' };
         el.addEventListener('canplaythrough', () => finish('ready'), { once: true });
         el.addEventListener('loadeddata', () => finish('ready'), { once: true });
         el.addEventListener('error', () => finish('failed'), { once: true });
-        el.src = line.file;
+        el.src = platform.assetPath(line.file);
         el.load();
         setTimeout(() => finish('unknown'), timeoutMs);
       } catch (_) {
@@ -76,7 +83,7 @@ export class VoiceSystem {
     const c = this.current;
     if (!c) return false;
     if (c.el) return !c.el.paused && !c.el.ended;
-    return c.until > performance.now();
+    return c.until > platform.now();
   }
 
   /**
@@ -123,12 +130,17 @@ export class VoiceSystem {
     this.cooldown = VoiceConfig.cooldown;
     this.history.push(line.id);
     const clip = this.clips[line.id];
+    if (clip && clip.state === 'lazy' && this.enabled && this.audio.master > 0 && platform.hasAudio()) {
+      if (this.lazyEl && this.lazyEl.destroy) this.lazyEl.destroy();
+      this.lazyEl = platform.createAudio(clip.src);
+      clip.el = this.lazyEl;
+    }
     const dur = clip && clip.el && Number.isFinite(clip.el.duration) ? clip.el.duration : null;
     this.events.emit('voice:line', { line, char: CHARACTERS[line.who], duration: dur, ...o });
     const silent = !this.enabled || this.audio.master <= 0;
     if (silent || !clip || !clip.el || clip.state === 'failed') {
       // 没声音也占住时长，保证字幕/冷却节奏一致
-      this.current = { line, el: null, until: performance.now() + 1600 };
+      this.current = { line, el: null, until: platform.now() + 1600 };
       return;
     }
     const el = clip.el;
@@ -164,6 +176,6 @@ export class VoiceSystem {
 
   update(dt) {
     if (this.cooldown > 0 && !this.isPlaying()) this.cooldown -= dt;
-    if (this.current && !this.current.el && this.current.until <= performance.now()) this.current = null;
+    if (this.current && !this.current.el && this.current.until <= platform.now()) this.current = null;
   }
 }

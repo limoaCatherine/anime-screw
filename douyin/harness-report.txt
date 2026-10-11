@@ -1,0 +1,17 @@
+PASS  game.js 启动进入主界面  — 已加载分包 cg,voice,bgm  画布 780x1688  逻辑缩放 1.444 偏移 0,204
+PASS  触摸「开拆」进入第 1 关  — scene=game
+PASS  用触摸拧完第 1 关  — 触摸 6 次 / 参考解 6 颗
+PASS  过关面板出现「分享通关录屏」按钮
+PASS  录屏：进关 start(duration=300)，揭画后 stop  — [{"op":"start","d":300},{"op":"stop"}]
+PASS  分享通关录屏 → tt.shareAppMessage(channel:video, extra.videoPath)  — 《拆封绘卷》拆螺丝揭开《雨后的屋顶》 / ttfile://temp/record_1.mp4
+PASS  广告位 ID 还是 YOUR_ 占位：不建广告，失败面板只有免费「再试一次」、没有任何看广告按钮  — mode=off 按钮=再试一次（多开一个孔） / 重来
+PASS  填了广告位后 → 入口恢复，show() → onClose(isEnded:true,count:1) 发奖励
+PASS  tt.checkScene(sidebar) isExist → 主界面显示「入口有奖」礼包
+PASS  侧边栏：navigateToScene → onHide 暂停 → onShow(launch_from=homepage, location=sidebar_card) → 立即领奖  — 按钮 去首页侧边栏 → 立即领奖，切后台时 hidden=true，道具 undo 2→3，调用 check,navigate
+PASS  tt.onHide 暂停 / tt.onShow 恢复  — {"frozen":true,"bgmPaused":true,"resumed":true}
+PASS  InnerAudioContext：音效 / 语音 / 音乐  — 音效 click.mp3 unscrew.mp3 creak_wood.mp3 box_0.mp3 box_1.mp3 box_2.mp3 impact_wood.mp3 box_3.mp3 box_4.mp3 boxFull_4.mp3 boxFull_0.mp3 reveal.mp3 win.mp3 fail.mp3 item.mp3 | 语音 4 次 | 音乐 sub_bgm/bgm/bgm_gallery.mp3 sub_bgm/bgm/bgm_roof.mp3 | 创建 18 个实例
+PASS  BGM 用 LoopTrack 两路接力 (mp3 垫片 + seek，不用 loop=true)  — {"looptrack":true,"pre":0.5,"len":80,"nativeLoop":[false,false],"src":"sub_bgm/bgm/bgm_gallery.mp3","playing":true,"seeks":6}
+PASS  存档走 tt.setStorageSync  — key=animeScrew.save.v1 cleared={"0":true}
+PASS  没有访问未核对的 tt 接口 / 分包前访问资源
+PASS  全程没有运行时错误
+用到的 tt 接口：checkScene, createCanvas, createImage, createInnerAudioContext, createRewardedVideoAd, getGameRecorderManager, getLaunchOptionsSync, getMenuButtonLayout, getStorageSync, getSystemInfoSync, loadSubpackage, navigateToScene, onHide, onShow, onTouchCancel, onTouchEnd, onTouchMove, onTouchStart, setStorageSync, shareAppMessage

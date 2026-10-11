@@ -6,6 +6,7 @@ import { AudioConfig } from '../config/AudioConfig.js';
 import { Button } from './Button.js';
 import { Icons } from './Icons.js';
 import { drawPanel, drawText, dimScreen, roundRectPath, drawParagraph, drawPortrait, ease } from './draw.js';
+import { platform } from '../platform/index.js';
 
 const W = GameConfig.width;
 const C = GameConfig.colors;
@@ -124,7 +125,7 @@ export class CreditsPanel extends Modal {
     drawPanel(ctx, 30, 110, W - 60, 790, 22);
     drawText(ctx, '制作人员', W / 2, 152, { size: 26, serif: true });
     drawText(ctx, `《${GameConfig.title}》 v${GameConfig.version}`, W / 2, 190, { size: 15, color: C.inkLight, weight: 'normal' });
-    drawText(ctx, '出品：上海盖姆艾尔网络科技有限公司', W / 2, 216, { size: 15, color: C.ink, weight: 'normal' });
+    drawText(ctx, GameConfig.publisher, W / 2, 216, { size: 15, color: C.ink, weight: 'normal' });
     drawText(ctx, '角色语音', W / 2, 262, { size: 18, color: C.copperDark });
     const chars = Object.values(CHARACTERS);
     chars.forEach((c, i) => {
@@ -134,13 +135,13 @@ export class CreditsPanel extends Modal {
       drawText(ctx, c.credit, W - 60, y, { size: 15, align: 'right', color: '#5b3d26' });
     });
     let y = 300 + chars.length * 46 + 10;
-    drawText(ctx, '语音合成软件 VOICEVOX（按各角色使用条款标注）', W / 2, y, { size: 13, color: C.inkLight, weight: 'normal' });
+    drawText(ctx, '语音合成软件 VOICEVOX（按各角色条款标注，全文见 licenses/）', W / 2, y, { size: 13, color: C.inkLight, weight: 'normal' });
     y += 44;
     drawText(ctx, '其他', W / 2, y, { size: 18, color: C.copperDark });
     const lines = [
       `音乐：${Object.values(AudioConfig.bgm.tracks).map((t) => `《${t.title}》`).join('')}`,
       '全部原创，程序化作曲 (tools/compose_bgm.py)',
-      '音效：WebAudio 实时合成',
+      platform.isMini ? '音效：WebAudio 合成后预渲染为 mp3' : '音效：WebAudio 实时合成',
       '角色立绘：沿用《美少女合成》原创素材',
       '插画背景：程序绘制 (tools/make_art.py)',
       '物理引擎 Matter.js（MIT）· 桌面版 Electron（MIT）',
@@ -165,6 +166,62 @@ export class ConfirmPanel extends Modal {
     drawPanel(ctx, 60, 360, W - 120, 250, 22);
     drawText(ctx, this.title, W / 2, 404, { size: 24, serif: true });
     drawParagraph(ctx, this.text, W / 2, 452, W - 170, { size: 16, color: C.inkLight });
+    this.renderButtons(ctx, dt);
+    ctx.restore();
+  }
+}
+
+/**
+ * 抖音「首页侧边栏入口奖励」(侧边栏复访，按官方技术指南)：
+ * 打开面板时读 tt.onShow 最新的启动信息——从侧边栏进来的显示「立即领奖」，否则显示「去首页侧边栏」(tt.navigateToScene)。
+ * 每天领一次：退一步 / 加孔 / 洗牌 各 +1。
+ */
+export const SIDEBAR_REWARD = { undo: 1, addHole: 1, shuffle: 1 };
+export const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+export function sidebarClaimedToday(game) { return game.save.get('sidebarDay', '') === today(); }
+
+export class SidebarPanel extends Modal {
+  constructor(game) {
+    super(game);
+    this.btn({ x: W / 2 - 100, y: 690, w: 160, h: 54, style: 'secondary', label: '关闭', fontSize: 20, onClick: () => this.close() });
+    this.main = this.btn({ x: W / 2 + 90, y: 690, w: 190, h: 54, style: 'primary', label: '', fontSize: 20, onClick: () => this.onMain() });
+  }
+  get state() {
+    if (sidebarClaimedToday(this.game)) return 'claimed';
+    return platform.sidebar && platform.sidebar.fromSidebar ? 'ready' : 'todo';
+  }
+  onMain() {
+    const g = this.game;
+    const st = this.state;
+    if (st === 'claimed') { this.close(); return; }
+    if (st === 'ready') {
+      for (const [k, n] of Object.entries(SIDEBAR_REWARD)) g.save.addItem(k, n);
+      g.save.set('sidebarDay', today());
+      g.events.emit('item:use');
+      g.toast('领到了：退一步 / 加孔 / 洗牌 各 1 个');
+      this.close();
+      return;
+    }
+    this.close();
+    platform.sidebar.navigate();
+  }
+  update(dt) {
+    super.update(dt);
+    const st = this.state;
+    this.main.label = st === 'claimed' ? '今天领过啦' : st === 'ready' ? '立即领奖' : '去首页侧边栏';
+  }
+  render(ctx, dt) {
+    dimScreen(ctx, 0.5);
+    ctx.save();
+    const s = this.pop;
+    ctx.translate(W / 2, 480); ctx.scale(s, s); ctx.translate(-W / 2, -480);
+    drawPanel(ctx, 40, 250, W - 80, 500, 22);
+    drawText(ctx, '首页侧边栏入口奖励', W / 2, 296, { size: 24, serif: true, color: C.copperDark });
+    ctx.save(); ctx.translate(W / 2, 360); Icons.gift(ctx, 72); ctx.restore();
+    const steps = ['① 点下方「去首页侧边栏」', `② 在侧边栏里点「${GameConfig.title}」`, '③ 回到游戏，领取奖励'];
+    steps.forEach((t, i) => drawText(ctx, t, 90, 430 + i * 38, { size: 17, align: 'left', weight: 'normal', color: C.ink }));
+    drawText(ctx, '奖励：退一步 / 加孔 / 洗牌 各 1 个 (每天一次)', W / 2, 560, { size: 15, color: C.inkLight, weight: 'normal' });
+    drawText(ctx, '以后从抖音首页侧边栏就能直接回来接着拆', W / 2, 600, { size: 14, color: C.inkLight, weight: 'normal' });
     this.renderButtons(ctx, dt);
     ctx.restore();
   }

@@ -1,8 +1,10 @@
 // 启动场景：加载图片与语音，显示进度，然后进入主界面。
+// 抖音 / 微信小游戏：先 loadSubpackage 拉插画 (cg) 与语音 (voice) 分包；音乐 (bgm) 分包在后台加载，好了再开始放。
 import { Scene } from '../core/Scene.js';
 import { GameConfig } from '../config/GameConfig.js';
 import { CHAPTERS } from '../config/LevelConfig.js';
 import { drawText, roundRectPath, drawWall } from '../ui/draw.js';
+import { platform } from '../platform/index.js';
 
 export class BootScene extends Scene {
   constructor(game) { super(game, 'boot'); this.progress = 0; }
@@ -14,12 +16,22 @@ export class BootScene extends Scene {
       images.push({ key, src: `assets/images/chars/${key}.png`, color: '#d9b38c', label: String(i) });
     }
     for (const ch of CHAPTERS) images.push({ key: ch.cg, src: `assets/images/cg/${ch.cg}.jpg`, color: '#8a6a48', label: '画' });
-    let pi = 0; let pv = 0;
-    const update = () => { this.progress = pi * 0.7 + pv * 0.3; };
-    Promise.all([
+    let pi = 0; let pv = 0; let ps = platform.isMini ? 0 : 1;
+    const update = () => { this.progress = ps * 0.4 + (pi * 0.7 + pv * 0.3) * (platform.isMini ? 0.6 : 1); };
+    let subs = Promise.resolve();
+    if (platform.isMini) {
+      const prog = { cg: 0, voice: 0 };
+      const step = (k) => (p) => { prog[k] = p; ps = (prog.cg + prog.voice) / 2; update(); };
+      subs = Promise.all([
+        platform.loadSubpackage('cg', step('cg')).then((ok) => { step('cg')(1); return ok; }),
+        platform.loadSubpackage('voice', step('voice')).then((ok) => { step('voice')(1); return ok; }),
+      ]);
+      platform.loadSubpackage('bgm').then((ok) => this.game.bgm.setAvailable(!!ok));
+    }
+    subs.then(() => Promise.all([
       this.game.assets.loadImages(images, (p) => { pi = p; update(); }),
       this.game.voice.preload((p) => { pv = p; update(); }),
-    ]).then(() => {
+    ])).then(() => {
       this.done = true;
       setTimeout(() => this.game.scenes.change('menu'), 150);
     });

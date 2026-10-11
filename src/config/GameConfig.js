@@ -3,7 +3,8 @@
 export const GameConfig = {
   title: '拆封绘卷',
   subtitle: 'AnimeScrew',
-  version: '1.1.0',
+  version: '1.2.0',
+  publisher: '出品：狸猫',
   levelCount: 30,
 
   // 逻辑分辨率 (9:16 竖屏)，实际显示按窗口等比缩放
@@ -77,14 +78,17 @@ export const GameConfig = {
     shuffle:     { name: '换盒',   perLevel: 1, start: 1, unlock: 15 },
   },
   itemOrder: ['undo', 'addHole', 'screwdriver', 'hammer', 'shuffle'],
-  revivesPerLevel: 2,
+  revivesPerLevel: 2,        // 有激励视频时：每关最多看广告复活 2 次
+  freeRetriesPerLevel: 1,    // 没有广告位时：每关 1 次免费「再试一次」(效果同复活)
+  dailyFreeItem: true,       // 没有广告位时：道具用完后，每种道具每天可免费领 1 个
   reviveClearHoles: 2,      // 复活时顺手收走临时孔里最早的 2 颗
   bombReviveSteps: 5,       // 炸弹失败复活：所有引信 +5 步
 
   ads: {
-    // 抖音激励视频广告位 ID。填上就走 tt.createRewardedVideoAd；留空则用 5 秒占位倒计时
+    // 抖音激励视频广告位 ID (抖音版优先读 game-config.js)。填上就走 tt.createRewardedVideoAd；
+    // 留空 = 不显示任何「看广告」入口 (免费再试一次 + 每日免费道具)
     douyinRewardedAdUnitId: '',
-    placeholderSeconds: 5,
+    placeholderSeconds: 5,   // 仅测试脚本的 devPlaceholder 用
   },
 
   fontFamily: '"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Noto Sans CJK SC","Noto Sans SC",sans-serif',

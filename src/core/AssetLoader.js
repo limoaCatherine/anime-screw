@@ -1,4 +1,6 @@
 // 资源加载器：预加载图片并汇报进度。加载失败时生成占位图并给出警告，保证游戏可继续。
+// 图片 / 画布由平台层创建 (网页 new Image / canvas，抖音 tt.createImage / tt.createCanvas)。
+import { platform } from '../platform/index.js';
 export class AssetLoader {
   constructor() {
     this.images = new Map();
@@ -17,8 +19,8 @@ export class AssetLoader {
     const total = list.length;
     if (total === 0) { onProgress(1); return Promise.resolve(); }
     return Promise.all(list.map((item) => new Promise((resolve) => {
-      const img = new Image();
-      img.decoding = 'async';
+      const img = platform.createImage();
+      try { img.decoding = 'async'; } catch (_) { /* 抖音 Image 没有 decoding */ }
       img.onload = () => {
         this.images.set(item.key, img);
         onProgress(++done / total);
@@ -30,13 +32,12 @@ export class AssetLoader {
         onProgress(++done / total);
         resolve();
       };
-      img.src = item.src;
+      img.src = platform.assetPath(item.src);
     })));
   }
 
   static placeholder(color = '#ccc', label = '?') {
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
+    const c = platform.createCanvas(256, 256);
     const g = c.getContext('2d');
     g.fillStyle = color;
     g.beginPath(); g.arc(128, 128, 126, 0, Math.PI * 2); g.fill();

@@ -1,7 +1,7 @@
 // 存档系统：进度 (解锁到第几关、每关是否拆过、画册碎片)、道具库存、设置。
 // 存储后端自动选择：
 //   - Electron 桌面版：window.desktopSave (preload 暴露) → %APPDATA%\AnimeScrew\save.json
-//   - 抖音小游戏：tt.getStorageSync / tt.setStorageSync
+//   - 抖音小游戏：tt.getStorageSync / tt.setStorageSync；微信小游戏：wx.getStorageSync / wx.setStorageSync
 //   - 浏览器：localStorage
 //   - 都不可用 (隐私模式等)：只存在内存里
 import { GameConfig } from '../config/GameConfig.js';
@@ -16,6 +16,11 @@ function pickBackend(key) {
   if (typeof tt !== 'undefined' && tt.getStorageSync) {
     // eslint-disable-next-line no-undef
     return { name: 'tt', read: () => tt.getStorageSync(key) || null, write: (s) => tt.setStorageSync(key, s) };
+  }
+  // eslint-disable-next-line no-undef
+  if (typeof wx !== 'undefined' && wx.getStorageSync) {
+    // eslint-disable-next-line no-undef
+    return { name: 'wx', read: () => wx.getStorageSync(key) || null, write: (s) => wx.setStorageSync(key, s) };
   }
   try {
     const ls = g.localStorage;

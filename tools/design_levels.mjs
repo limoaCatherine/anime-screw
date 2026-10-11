@@ -246,6 +246,7 @@ for (let i = 0; i < BLUEPRINTS.length; i++) {
   }
   const diff = DIFFICULTY[i];
   let best = null;
+  const pool = [];
   for (const cand of lc.list) {
     const raw = cand.raw;
     const pieces = raw.screws.reduce((n, s) => n + s.colors.length, 0);
@@ -258,8 +259,17 @@ for (let i = 0; i < BLUEPRINTS.length; i++) {
       const ev = evaluate(g.level, GENERATOR.botRuns, i * 31 + c);
       if (process.env.DEBUG) console.log('  cand', cand.seed, c, ev.rate, JSON.stringify(ev.reasons));
       const score = Math.abs(ev.rate - diff.target) - (cand.cover || 0) * 0.15;
-      if (!best || score < best.score) best = { score, g, ev, cand: c, layoutSeed: cand.seed, cover: cand.cover, pieces };
+      pool.push({ score, g, ev, cand: c, layoutSeed: cand.seed, cover: cand.cover, pieces });
     }
+  }
+  // v1.1：从几十个候选里挑"测出来最接近目标"的那个会有赢家诅咒 (挑中的往往是测量噪声刚好偏向目标的)。
+  // 先按初测取前 4 名，再用一组全新的种子各复测一次，按复测结果定稿，报告的也是复测通关率
+  pool.sort((a, b) => a.score - b.score);
+  for (const p of pool.slice(0, 4)) {
+    const ev2 = evaluate(p.g.level, Math.max(48, GENERATOR.botRuns), 99991 + i * 7 + p.cand);
+    p.ev = ev2;
+    p.score = Math.abs(ev2.rate - diff.target) - (p.cover || 0) * 0.05;
+    if (!best || p.score < best.score) best = p;
   }
   if (!best) { bad++; console.log(`✗ ${tag}: 生成失败`); results.push(previous[i] || null); continue; }
   const L = best.g.level;

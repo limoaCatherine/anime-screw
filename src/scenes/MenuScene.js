@@ -5,7 +5,8 @@ import { LEVELS, CHAPTERS } from '../config/LevelConfig.js';
 import { CHARACTERS } from '../config/VoiceConfig.js';
 import { Button } from '../ui/Button.js';
 import { Icons } from '../ui/Icons.js';
-import { SettingsPanel } from '../ui/Panels.js';
+import { SettingsPanel, SidebarPanel, sidebarClaimedToday } from '../ui/Panels.js';
+import { platform } from '../platform/index.js';
 import { drawText, drawWall, drawPortrait, roundRectPath } from '../ui/draw.js';
 import { drawCG, drawFrame } from '../render/CGView.js';
 
@@ -30,6 +31,17 @@ export class MenuScene extends Scene {
       mk({ x: W / 2 + 78, y: 830, w: 144, h: 54, style: 'secondary', label: '画册', fontSize: 22, onClick: () => g.scenes.change('gallery') }),
       mk({ x: W - 40, y: 40, w: 52, h: 52, style: 'icon', icon: Icons.gear, onClick: () => g.pushModal(new SettingsPanel(g)) }),
     ];
+    // 抖音：侧边栏复访礼包入口 (tt.checkScene 判断宿主支持时才显示)
+    this.giftBtn = null;
+    if (platform.sidebar) {
+      const addGift = () => {
+        if (this.giftBtn) return;
+        this.giftBtn = mk({ x: 44, y: 44, w: 60, h: 60, style: 'icon', icon: Icons.gift, onClick: () => g.pushModal(new SidebarPanel(g)) });
+        this.buttons.push(this.giftBtn);
+      };
+      if (g.sidebarExists === true) addGift();
+      else if (g.sidebarExists == null) platform.sidebar.check((ok) => { g.sidebarExists = ok; if (ok) addGift(); });
+    }
   }
 
   render(ctx) {
@@ -54,6 +66,11 @@ export class MenuScene extends Scene {
     drawPortrait(ctx, g.assets.getImage(riri.key), 70, 600 + bob, 41);
     drawText(ctx, riri.name, 70, 656, { size: 13, color: '#fbe9cc', stroke: 'rgba(30,20,14,0.8)', strokeWidth: 3 });
     for (const b of this.buttons) b.render(ctx, 1 / 60);
-    drawText(ctx, `v${GameConfig.version}  ·  上海盖姆艾尔网络科技有限公司`, W / 2, 935, { size: 11, color: 'rgba(251,240,220,0.45)', weight: 'normal' });
+    if (this.giftBtn) {
+      const done = sidebarClaimedToday(g);
+      drawText(ctx, done ? '已领取' : '入口有奖', 44, 88, { size: 12, color: '#fbe9cc', stroke: 'rgba(30,20,14,0.8)', strokeWidth: 3 });
+      if (!done) { ctx.beginPath(); ctx.arc(68, 22, 6, 0, Math.PI * 2); ctx.fillStyle = '#e0614c'; ctx.fill(); }
+    }
+    drawText(ctx, `v${GameConfig.version}  ·  ${GameConfig.publisher}`, W / 2, 935, { size: 11, color: 'rgba(251,240,220,0.45)', weight: 'normal' });
   }
 }

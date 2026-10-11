@@ -1,0 +1,17 @@
+PASS  game.js 启动进入主界面  — 已加载分包 cg,voice,bgm  画布 780x1688  逻辑缩放 1.444 偏移 0,204
+PASS  触摸「开拆」进入第 1 关  — scene=game
+PASS  用触摸拧完第 1 关  — 触摸 6 次 / 参考解 6 颗
+PASS  过关面板：「给朋友看看这幅画」，没有抖音专有的「分享通关录屏」  — 下一块 / 画册 / 选关 / 给朋友看看这幅画
+PASS  转发：wx.shareAppMessage(title, imageUrl, query=chapter=0)  — {"title":"《雨后的屋顶》拆到 1/10 了","imageUrl":"assets/share.jpg","query":"chapter=0"}
+PASS  右上角菜单：wx.showShareMenu([shareAppMessage]) + wx.onShareAppMessage 返回转发卡片  — [["shareAppMessage"]] [{"title":"拧下螺丝，把画一块块拆出来","imageUrl":"assets/share.jpg","query":""}]
+PASS  广告位 ID 还是 YOUR_ 占位：不建广告，失败面板只有免费「再试一次」、没有任何看广告按钮  — mode=off 按钮=再试一次（多开一个孔） / 重来
+PASS  点免费「再试一次」→ 继续本关 (不看广告)  — {"status":"play","modal":false,"label":1}
+PASS  填了广告位后 → wx.createRewardedVideoAd，onClose(isEnded:true) 发奖励 / isEnded:false 不发  — {"enabled1":true,"mode1":"wechat","ok":true,"ok2":false,"shown":2}
+PASS  主界面没有抖音专有的侧边栏礼包
+PASS  wx.onHide 暂停 / wx.onShow 恢复  — {"frozen":true,"bgmPaused":true,"resumed":true}
+PASS  InnerAudioContext：音效 / 语音 / 音乐  — 音效 click.mp3 unscrew.mp3 creak_wood.mp3 box_0.mp3 box_1.mp3 box_2.mp3 impact_wood.mp3 box_3.mp3 box_4.mp3 boxFull_4.mp3 box_5.mp3 boxFull_5.mp3 reveal.mp3 win.mp3 fail.mp3 item.mp3 revive.mp3 | 语音 3 次 | 音乐 sub_bgm/bgm/bgm_gallery.mp3 sub_bgm/bgm/bgm_roof.mp3 | 创建 17 个实例
+PASS  BGM 用 LoopTrack 两路接力 (mp3 垫片 + seek，不用 loop=true)  — {"looptrack":true,"pre":0.5,"len":80,"nativeLoop":[false,false],"src":"sub_bgm/bgm/bgm_gallery.mp3","playing":true,"seeks":5}
+PASS  存档走 wx.setStorageSync  — key=animeScrew.save.v1 cleared={"0":true}
+PASS  没有访问未核对的 wx 接口 / 分包前访问资源
+PASS  全程没有运行时错误
+用到的 wx 接口：createCanvas, createImage, createInnerAudioContext, createRewardedVideoAd, getLaunchOptionsSync, getMenuButtonBoundingClientRect, getStorageSync, getWindowInfo, loadSubpackage, onHide, onShareAppMessage, onShow, onTouchCancel, onTouchEnd, onTouchMove, onTouchStart, setStorageSync, shareAppMessage, showShareMenu

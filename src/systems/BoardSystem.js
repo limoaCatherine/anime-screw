@@ -81,7 +81,7 @@ export class BoardSystem {
   }
 
   /** 螺丝被拧走：删掉它那条约束，按剩余钉数决定下垂 / 掉落 */
-  unpin(s, jitter = 0) {
+  unpin(s, jitter = 0, screwsById = null) {
     if (s.board < 0) return null;
     const b = this.byId.get(s.board);
     if (s.c) { this.physics.removeConstraint(s.c); s.c = null; }
@@ -89,6 +89,18 @@ export class BoardSystem {
     const n = b.pins.size;
     this.events.emit('board:pins', { board: b, pins: n });
     if (n === 1 && jitter) this.physics.nudge(b.body, jitter);
+    // v1.1：剩下那颗钉正好在重心下方 (板子"倒立"在钉上) 时，物理上是不稳定平衡，会顶着不动好几秒再慢慢倒，
+    // 看着像卡住了。给一个明显的推力让它马上翻下去
+    if (n === 1 && (!b.rope || b.rope.cut)) {
+      const piv = screwsById && screwsById.get([...b.pins][0]);
+      if (piv) {
+        const dx = b.body.position.x - piv.x0; const dy = b.body.position.y - piv.y0;
+        if (Math.hypot(dx, dy) > 4 && Math.abs(Math.atan2(dx, dy)) > 2.4) {
+          const dir = Math.abs(dx) > 0.5 ? Math.sign(dx) : (jitter >= 0 ? 1 : -1);
+          this.physics.nudge(b.body, 0.03 * dir);
+        }
+      }
+    }
     if (n === 0 && (!b.rope || b.rope.cut)) this.drop(b);
     return b;
   }

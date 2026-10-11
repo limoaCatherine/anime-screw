@@ -19,11 +19,11 @@ const electronVersion = require('electron/package.json').version;
 export const APP = {
   productName: '拆封绘卷',
   exeName: '拆封绘卷',
-  company: '上海盖姆艾尔网络科技有限公司',
+  company: '狸猫',
   description: '拆封绘卷 AnimeScrew - 二次元拧螺丝解谜小游戏',
-  copyright: `Copyright © 2026 上海盖姆艾尔网络科技有限公司`,
+  copyright: `© 2026 狸猫  出品：狸猫`,
   version: pkg.version,
-  appId: 'com.gamel.animescrew',
+  appId: 'com.limao.animescrew',
 };
 
 async function rmrf(p) { await fs.rm(p, { recursive: true, force: true }); }
@@ -84,6 +84,8 @@ async function main() {
     const exe = path.join(finalDir, `${APP.exeName}.exe`);
     await embedWinResources(exe, path.join(root, 'assets/icons/app.ico'), APP);
     // 默认 LICENSE 文件保留 (Electron/Chromium 许可证)；删掉无用的 version 文件以外不做改动
+    // v1.2：VOICEVOX 角色规约 + 引擎许可 + 第三方许可，放在 exe 旁边的 licenses/ 里
+    await copyDir(path.join(root, 'docs/licenses'), path.join(finalDir, 'licenses'));
     console.log(`[package] 完成: ${path.relative(root, exe)}`);
   } else {
     console.log(`[package] 完成: ${path.relative(root, finalDir)}/anime-screw`);

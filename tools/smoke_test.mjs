@@ -16,7 +16,7 @@ let failures = 0;
 const check = (cond, msg) => { console.log(`${cond ? '  ✔' : '  ✘'} ${msg}`); if (!cond) failures++; };
 
 const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
-const page = await browser.newPage({ viewport: { width: 540, height: 960 }, deviceScaleFactor: 2 });
+const page = await browser.newPage({ viewport: { width: 540, height: 960 }, deviceScaleFactor: Number(process.env.SHOT_DPR || 2) });
 const errors = [];
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -24,7 +24,8 @@ page.on('requestfailed', (r) => errors.push(`request failed: ${r.url()}`));
 
 const url = pathToFileURL(path.join(root, 'dist/index.html')).href;
 await page.goto(url);
-const shot = async (name) => { await page.screenshot({ path: path.join(shotDir, name) }); console.log(`  📷 ${name}`); };
+const PREFIX = process.env.SHOT_PREFIX || '';
+const shot = async (name) => { if (PREFIX && !name.startsWith(PREFIX)) name = PREFIX + name; await page.screenshot({ path: path.join(shotDir, name) }); console.log(`  📷 ${name}`); };
 const waitScene = (name, timeout = 10000) => page.waitForFunction((n) => {
   const g = window.__ANIME_SCREW__;
   return g && g.scenes.currentName === n && !g.scenes.transitioning;
@@ -100,11 +101,52 @@ await G(() => {
 });
 await sleep(1500);
 await shot('10_level3-9_progress.png');
-// 失败面板
+// 失败面板 (没有广告位：不出现任何「看广告」，每关一次免费「再试一次」)
+const noAd = await G(() => { const g = window.__ANIME_SCREW__; return { enabled: g.ads.enabled, third: !!g.scenes.current.tray.thirdOffer }; });
+check(!noAd.enabled && !noAd.third, `没填广告位：广告入口关闭、没有第三盒位广告 (${JSON.stringify(noAd)})`);
 await G(() => window.__ANIME_SCREW__.scenes.current.puzzle.fail('holes'));
 await sleep(1600);
 await shot('11_fail_panel.png');
-// 广告占位
+{
+  const labels = await G(() => window.__ANIME_SCREW__.modals.at(-1).buttons.map((b) => b.label));
+  check(labels.some((l) => l.startsWith('再试一次')) && !labels.some((l) => l.includes('广告')), `失败面板：免费「再试一次」、没有广告按钮 (${labels.join(' / ')})`);
+  await tap(270, 560);
+  await sleep(700);
+  const r = await G(() => { const g = window.__ANIME_SCREW__; const sc = g.scenes.current; return { status: sc.puzzle.status, revives: sc.revives, ph: !!g.ads.placeholder, watched: g.ads.watched }; });
+  check(r.status === 'play' && r.revives === 1 && !r.ph && r.watched === 0, `点「再试一次」直接继续，不放广告 (${JSON.stringify(r)})`);
+  await G(() => window.__ANIME_SCREW__.scenes.current.puzzle.fail('holes'));
+  for (let i = 0; i < 40 && !(await G(() => !!window.__ANIME_SCREW__.modals.at(-1))); i++) await sleep(100);   // 机器忙时失败面板会晚一点出来
+  await sleep(1400);
+  const labels2 = await G(() => window.__ANIME_SCREW__.modals.at(-1).buttons.map((b) => b.label));
+  check(!labels2.some((l) => l.startsWith('再试一次')), `每关只能免费再试一次 (${labels2.join(' / ')})`);
+  await shot('11b_fail_panel_used.png');
+  // 道具用完：每天免费领一次，领过后不再弹广告
+  const fr = await G(() => {
+    const g = window.__ANIME_SCREW__; const sc = g.scenes.current;
+    g.modals.forEach((m) => m.close()); sc.closeFail();
+    sc.puzzle.status = 'play'; sc.state = 'play';
+    g.save.set('freeItem_addHole', ''); while (g.save.item('addHole') > 0) g.save.addItem('addHole', -1);
+    sc.usage.addHole = 0;
+    const holes0 = sc.puzzle.box.holes.length;
+    sc.useItem('addHole');
+    const ask = g.modals.at(-1); const okLabel = ask && ask.buttons.map((b) => b.label).join('/');
+    ask.buttons[1].onClick();
+    const holes1 = sc.puzzle.box.holes.length;
+    sc.usage.addHole = 0;
+    const n0 = g.modals.length; sc.useItem('addHole'); const n1 = g.modals.length;
+    return { okLabel, holes0, holes1, popupAgain: n1 > n0, ads: g.ads.watched };
+  });
+  check(/免费领取/.test(fr.okLabel) && fr.holes1 === fr.holes0 + 1 && !fr.popupAgain && fr.ads === 0, `道具用完：今日免费领一个，领过就只提示明天再来 (${JSON.stringify(fr)})`);
+}
+// 测试用占位广告 (devPlaceholder)：模拟「填了广告位」的界面与流程
+await G(() => { const g = window.__ANIME_SCREW__; g.ads.devPlaceholder = true; g.scenes.change('game', { level: g.scenes.current.index }); });
+await sleep(1500);
+await G(() => { const g = window.__ANIME_SCREW__; g.modals.forEach((m) => m.close()); g.scenes.current.state = 'play'; g.scenes.current.puzzle.fail('holes'); });
+await sleep(1600);
+{
+  const labels = await G(() => window.__ANIME_SCREW__.modals.at(-1).buttons.map((b) => b.label));
+  check(labels.some((l) => l.startsWith('看个广告')), `填了广告位：失败面板恢复「看个广告」复活 (${labels.join(' / ')})`);
+}
 await tap(270, 560);
 await sleep(1200);
 await shot('12_ad_placeholder.png');
@@ -183,7 +225,8 @@ await enterLevel(8);
   const ok = await G(() => { const sc = window.__ANIME_SCREW__.scenes.current; const r = sc.subs.lastRect; return r ? r.y >= 856 - 1 : null; });
   check(ok !== false, `字幕气泡在画框下方 (${JSON.stringify(await G(() => window.__ANIME_SCREW__.scenes.current.subs.lastRect || null))})`);
 }
-// 6) 小锤碎裂动画
+// 6) 小锤碎裂动画 (小锤第 12 关起解锁，换到 2-4)
+await enterLevel(13);
 {
   const r = await G(() => { const sc = window.__ANIME_SCREW__.scenes.current; const pz = sc.puzzle; const g = window.__ANIME_SCREW__;
     g.save.data.items.hammer = Math.max(1, g.save.data.items.hammer || 0);
@@ -197,9 +240,11 @@ await enterLevel(8);
   await sleep(180);
   await shot('v11_hammer_shatter.png');
   check(r && r.broken && r.shards > 0, `小锤敲板：板子碎掉并有碎片动画 (${JSON.stringify(r)})`);
-  await sleep(1200);
+  // 碎片寿命 0.75~1 秒 (游戏时间)；机器忙时帧率低，给到 5 秒墙钟
+  const t1 = Date.now();
+  await page.waitForFunction(() => window.__ANIME_SCREW__.scenes.current.shards.length === 0, null, { timeout: 5000 }).catch(() => {});
   const left = await G(() => window.__ANIME_SCREW__.scenes.current.shards.length);
-  check(left === 0, `碎片动画 1 秒内放完 (剩 ${left})`);
+  check(left === 0, `碎片动画放完并清理 (剩 ${left}，${Date.now() - t1}ms)`);
 }
 // 7) 复活按钮连点两下：只看一次广告、只复活一次；广告期间物理和炸弹都停
 await enterLevel(20);   // 3-1 炸弹关
@@ -231,7 +276,7 @@ check(await G(() => { const a = window.__ANIME_SCREW__.audio; return !a.ctx || a
     localStorage.setItem(k, JSON.stringify({ unlocked: 999, cleared: 'oops', fragments: [true, 'x'], items: { undo: -5, hammer: 1e9 }, settings: null, plays: 'a' }));
     const S = g.save.constructor; const t = new S(k);
     const d = t.data;
-    const res = { unlocked: d.unlocked, cleared: Array.isArray(d.cleared), undo: d.items.undo, hammer: d.items.hammer, frag0: d.fragments[0] };
+    const res = { unlocked: d.unlocked, cleared: !!d.cleared && typeof d.cleared === 'object' && !Array.isArray(d.cleared), undo: d.items.undo, hammer: d.items.hammer, frag0: d.fragments[0] };
     localStorage.setItem(k, good);
     return res;
   });

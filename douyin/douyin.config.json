@@ -1,0 +1,7 @@
+{
+  "_说明": "抖音小游戏唯一配置文件：appid 与激励视频广告位 ID 都写在这里。改完运行 npm run build:douyin，会同步到 dist/project.config.json 与 dist/game-config.js。已构建好的 dist/ 里也可以直接改 dist/game-config.js (两个值都在那一个文件里)，appid 另在导入开发者工具时填写。",
+  "appid": "YOUR_APPID",
+  "rewardedAdUnitId": "YOUR_REWARDED_AD_UNIT_ID",
+  "shareTemplateId": "",
+  "projectname": "拆封绘卷"
+}

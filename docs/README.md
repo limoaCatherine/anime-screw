@@ -5,7 +5,12 @@
 - 纯 Canvas 2D + 原生 ES 模块，物理用 Matter.js 0.19 (vendor/matter.min.js)
 - `npm run build` → `dist/index.html`，双击就能玩 (file:// 下可运行，不需要服务器)
 - 竖屏 540×960 逻辑分辨率，手机优先，桌面浏览器 / Electron 桌面版同样能玩
-- 抖音小游戏：在 `GameConfig.ads.douyinRewardedAdUnitId` 填上激励视频广告位后，`AdService` 自动改走 `tt.createRewardedVideoAd`；没填就是 5 秒占位倒计时
+- 抖音小游戏版 (v1.2)：独立工程 `douyin/`，用 `npm run build:douyin` 生成 `douyin/dist/`。平台差异都在 `src/platform/{web,douyin}`，上架步骤见 `docs/抖音上架说明.md`。
+- 微信小游戏版 (v1.2)：独立工程 `wechat/`，用 `npm run build:wechat` 生成 `wechat/dist/` (交付时是「微信小游戏」文件夹)。平台层 `src/platform/wechat`，与抖音共用 `src/platform/mini` 与构建脚本 `tools/build_mini.mjs`；上架步骤见 `docs/微信上架说明.md`。
+- 广告：激励视频广告位 ID 填在 `douyin/douyin.config.json` / `wechat/wechat.config.json`，构建后在各自 `dist/game-config.js`。填了 ID，`AdService` 就走平台层 `createRewardedAd` (`tt.createRewardedVideoAd` / `wx.createRewardedVideoAd`)。没填 ID 时 (网页版、桌面版、抖音/微信首发版)：
+  - 所有「看广告」入口都隐藏；
+  - 每关有 1 次免费「再试一次」；
+  - 道具用完后，每种道具每天可以免费领 1 个。
 
 ## 玩法
 
@@ -25,14 +30,14 @@
 | 锁链 | 2-1 | 链子两头的螺丝被锁住，拧掉挂锁那颗 (链子中间的锁螺丝) 链子就断 |
 | 冰冻 | 2-3 | 螺丝外面一层冰，旁边每拧掉一颗就裂一点，数字归零才能拧 |
 | 钥匙锁 | 2-7 | 板子上挂着锁，同色钥匙螺丝进了收纳盒才开 |
-| 炸弹 | 3-1 | 倒计时螺丝，每拧一步减 1，归零就输 (可以看广告续 5 步) |
+| 炸弹 | 3-1 | 倒计时螺丝，每拧一步减 1，归零就输 (复活 / 再试一次时引信多烧 5 步) |
 | 隐色 | 3-2 | 灰色问号螺丝，拧下来才知道是什么颜色 |
 | 绳吊 | 3-4 | 板子用绳子挂在一颗挂钉上，挂钉一拧，整块板连同上面的螺丝一起掉下来进收纳区 |
 | 双层 (加分项) | 3-7 | 一颗螺丝两层钉帽，外层颜色先拧，里面还有一颗 |
 
 ### 道具 (每关每种限用次数见 GameConfig.items)
 
-退一步 (1 关起) · 加孔 (1 关起) · 螺丝刀 (8 关起，无视遮挡直接拧一颗) · 小锤 (12 关起，敲碎任意一块板子，上面的螺丝一起收进盒子或临时孔，放不下就不让敲) · 换盒 (15 关起，盒子还空着时，按场上露出来的螺丝和临时孔里的颜色重新换盒)。用完了可以看激励广告拿一次；失败时可以看广告复活 (清出 2 个临时孔)。
+退一步 (1 关起) · 加孔 (1 关起) · 螺丝刀 (8 关起，无视遮挡直接拧一颗) · 小锤 (12 关起，敲碎任意一块板子，上面的螺丝一起收进盒子或临时孔，放不下就不让敲) · 换盒 (15 关起，盒子还空着时，按场上露出来的螺丝和临时孔里的颜色重新换盒)。道具用完了：填了广告位时可以看激励广告拿一次，没填广告位时每种道具每天可以免费领一个。失败时：有广告位可以看广告复活，每关 2 次；没有广告位时每关有 1 次免费「再试一次」。两种复活效果一样：多开一个孔、引信多烧 5 步，或送一次螺丝刀。
 
 ## 目录
 
@@ -64,9 +69,16 @@ vendor/matter.min.js
 | `npm run build` | 打包到 `dist/` |
 | `npm run serve` | 本地起个服务器调试 (http://localhost:8766) |
 | `npm run levels` | 根据蓝图和难度曲线重新生成 `LevelData.js` |
-| `npm run verify` | Node 里无头跑 Matter，验证每关都能解开、板子会正常掉落，写出 `docs/verify_report.txt` |
-| `npm test` | Playwright 冒烟测试：打开 dist/index.html，鼠标点完第 1 关，截图到 /workspace/AnimeScrew_shots |
-| `npm run test:play` | 浏览器里把 30 关按参考解全部打一遍，顺带试 5 个道具 |
+| `npm run verify` | Node 里无头跑 Matter，验证每关都能解开、板子会正常掉落；v1.1 起还独立复核遮挡 (含晃过来的板子)、强制移除次数、钥匙/冰层数据、新障碍是否先单独登场，写出 `docs/verify_report.txt` |
+| `npm run fuzz` | 道具模糊测试：每关多局随机乱拧 + 随机用道具/复活，检查盒子队列对账、退一步完全还原、约束数量、死局一定判负 |
+| `npm test` | Playwright 冒烟测试：打开 dist/index.html，鼠标点完第 1 关；v1.1 回归 (连点/双击、点被压的螺丝、面板期间点击、复活连点、广告期间暂停、字幕位置、碎裂动画、坏存档)；截图到 /workspace/AnimeScrew_shots |
+| `npm run build:douyin` | 抖音小游戏构建 → `douyin/dist/`：主包与 voice、bgm、cg 三个分包；mp3 审计；BGM 无缝循环检查；包体报告写到 `douyin/size-report.txt` |
+| `npm run build:wechat` | 微信小游戏构建 → `wechat/dist/`：主包 + voice/bgm/cg 普通分包；按微信限制检查 (主包 ≤4MB、整包 ≤30MB)；报告写到 `wechat/size-report.txt` |
+| `npm run test:wechat` | wx-mock 环境：只放已核对过官方文档的 wx 接口，用触摸打完第 1 关，并检查转发、无广告位的免费再试一次、激励视频 isEnded、前后台、音频、存档 |
+| `npm run test:douyin` | tt-mock 环境：只放已核对过官方文档的 tt 接口，用触摸打完第 1 关，并检查录屏、分享、广告、侧边栏、前后台切换、音频、存档 |
+| `npm run test:looptrack` | LoopTrack 无缝循环仿真：起播延迟、currentTime 刷新粗、volume 只读等情况下，循环点都不能出现空白 |
+| `npm run render:sfx` | 把 WebAudio 音效预渲染成 49 个 mp3 (抖音版用) |
+| `npm run test:play` | 浏览器里把 30 关按参考解全部打一遍，顺带试 5 个道具 (第 15 关打到一半换盒，确认还能通关) |
 | `npm run desktop` | 用 Electron 直接跑桌面版 |
 | `npm run pack:win` | 打 Windows x64 桌面版 → `release/拆封绘卷/拆封绘卷.exe` (Linux 上也能打，不需要 wine) |
 | `npm run pack:linux` + `npm run test:desktop` | 打 Linux 版并自动测试桌面外壳 (存档路径、9:16、无菜单等) |
@@ -78,16 +90,18 @@ vendor/matter.min.js
 - 响度：语音 -20 LUFS，BGM -22 LUFS (ffmpeg loudnorm / EBU R128 校准)
 - 默认音量：语音 0.3、音效 0.12、BGM 0.15，设置里有总音量滑杆和三个开关
 - 说话时 BGM 压到 ×0.55 (150 ms 压下 / 400 ms 回升)
-- 台词：同时只说一句，0.6 s 冷却，高优先级打断低优先级，低优先级直接丢弃不排队；每个角色每关最多 2 句
-- 音效全部 WebAudio 实时合成：拧出 (3 段 2–4 kHz 带通噪声 + 一声"啵")、拧不动"咔"、进盒五声音阶连击 (1.2 s 窗口内递升，5 连后升八度，最多 10 级)、进孔空心回声、盒满合盖 + 琶音、板子落地按材质 (多块同时落地合并)、揭开插画粉噪声扫频；随机音高、同一音效 60 ms 限频、每帧每类最多 2 个
+- 台词：同时只说一句，0.6 s 冷却，高优先级打断低优先级，低优先级直接丢弃不排队；每关最多 2 句 (揭开插画的那句除外)，同一组 (开场/连击/过关/失败…) 每关一次，同一句 3 次内不重复，过关/连击/失败有 2~3 个说法轮换
+- 语音 (v1.1)：VOICEVOX 语速 1.12–1.25×、抑扬 1.15–1.5，按情绪选 style (四国めたん 有 ノーマル/あまあま/ツンツン)，关键词单独抬音高，句首轻吸气，加 9% 小房间混响；字幕跟着语音时长走，开场闲聊等语音说完再出
+- 抖音版 / 微信版：全部音频都是 mp3 (iOS 不支持 ogg)。音效是用同一套合成器预渲染的 49 个变体。BGM 循环曲加了首尾垫片，再由 `LoopTrack` 两路接力播放，循环点没有空白。
+- 音效 (网页版和桌面版) 全部用 WebAudio 实时合成：拧出 (3 段 2–4 kHz 带通噪声 + 一声"啵")、拧不动"咔"、进盒五声音阶连击 (1.2 s 窗口内递升，5 连后升八度，最多 10 级)、进孔空心回声、盒满合盖 + 琶音、板子落地按材质 (多块同时落地合并)、揭开插画粉噪声扫频；随机音高、同一音效 60 ms 限频、每帧每类最多 2 个
 
 ## 存档
 
 - 桌面版：`%APPDATA%\AnimeScrew\save.json` (preload 暴露 `window.desktopSave`，先写临时文件再改名)
-- 抖音：`tt.setStorageSync`；浏览器：`localStorage`；都不可用时只存内存
+- 抖音：`tt.setStorageSync`；微信：`wx.setStorageSync`；浏览器：`localStorage`；都不可用时只存内存
 
 ## 制作人员
 
-角色语音：VOICEVOX:猫使ビィ (铆铆)、VOICEVOX:春日部つむぎ (小满)、VOICEVOX:東北きりたん (苏枝)、VOICEVOX:冥鳴ひまり (阿蘅)。
+角色语音：VOICEVOX:四国めたん (铆铆)、VOICEVOX:春日部つむぎ (小满)、VOICEVOX:東北きりたん (苏枝)、VOICEVOX:冥鳴ひまり (阿蘅)。
 角色立绘沿用《美少女合成》原创素材；背景音乐、插画背景、音效均为程序生成的原创内容。
-Matter.js (MIT)、Electron (MIT)。出品：上海盖姆艾尔网络科技有限公司。
+Matter.js (MIT)、Electron (MIT)。出品：狸猫。

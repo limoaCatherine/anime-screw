@@ -1,6 +1,7 @@
 // 螺丝外观：金属垫圈 + 主题色钉帽 (径向渐变 + 高光) + 十字槽；以及冰冻 / 炸弹 / 钥匙 / 双层 / 隐色 等状态。
 import { GameConfig } from '../config/GameConfig.js';
 import { drawText } from '../ui/draw.js';
+import { platform } from '../platform/index.js';
 
 const R = GameConfig.screw.radius;
 const capCache = new Map();
@@ -10,8 +11,7 @@ function capSprite(colorKey, r) {
   if (capCache.has(key)) return capCache.get(key);
   const SS = 3;
   const size = Math.ceil((r + 6) * 2);
-  const c = document.createElement('canvas');
-  c.width = c.height = size * SS;
+  const c = platform.createCanvas(size * SS, size * SS);
   const g = c.getContext('2d');
   g.scale(SS, SS);
   g.translate(size / 2, size / 2);

@@ -1,6 +1,6 @@
 {
   "name": "anime-screw",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "《拆封绘卷》AnimeScrew - HTML5 + Matter.js 二次元拧螺丝小游戏",
   "main": "src/main.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "vendor": "node -e \"require('fs').copyFileSync('node_modules/matter-js/build/matter.min.js','vendor/matter.min.js')\"",
     "levels": "node tools/design_levels.mjs",
     "verify": "node tools/verify_levels.mjs",
+    "fuzz": "node tools/fuzz_items.mjs",
     "test": "node tools/smoke_test.mjs",
     "test:play": "node tools/playthrough.mjs",
     "test:desktop": "node tools/test_desktop.mjs",
@@ -19,7 +20,14 @@
     "icons": "python3 tools/make_icons.py",
     "desktop": "npm run build && electron desktop/main.js",
     "pack:win": "node tools/package.mjs win",
-    "pack:linux": "node tools/package.mjs linux"
+    "pack:linux": "node tools/package.mjs linux",
+    "build:douyin": "node tools/build_douyin.mjs",
+    "render:sfx": "node tools/render_sfx.mjs",
+    "test:douyin": "node tools/test_douyin.mjs",
+    "test:looptrack": "node tools/test_looptrack.mjs",
+    "shots:store": "node tools/store_shots.mjs",
+    "build:wechat": "node tools/build_wechat.mjs",
+    "test:wechat": "node tools/test_wechat.mjs"
   },
   "license": "UNLICENSED",
   "devDependencies": {
@@ -32,5 +40,7 @@
   },
   "private": true,
   "type": "commonjs",
-  "author": "上海盖姆艾尔网络科技有限公司"
+  "author": "狸猫",
+  "productName": "拆封绘卷",
+  "publisher": "出品：狸猫"
 }

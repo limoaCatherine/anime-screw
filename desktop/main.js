@@ -15,7 +15,7 @@ const ASPECT = 9 / 16;
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // 固定用户数据目录 (ASCII 名称，改版本、改 exe 名都不会丢存档)
 app.setPath('userData', path.join(app.getPath('appData'), 'AnimeScrew'));
-if (process.platform === 'win32') app.setAppUserModelId('com.gamel.animescrew');
+if (process.platform === 'win32') app.setAppUserModelId('com.limao.animescrew');
 
 const saveFile = () => path.join(app.getPath('userData'), 'save.json');
 

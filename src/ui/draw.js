@@ -1,5 +1,6 @@
 // 通用绘制工具：圆角矩形、文字 (自动换行)、面板、纸张/木纹背景、缓动函数。
 import { GameConfig } from '../config/GameConfig.js';
+import { platform } from '../platform/index.js';
 
 export function roundRectPath(ctx, x, y, w, h, r) {
   const rr = Math.max(0, Math.min(r, w / 2, h / 2));
@@ -101,8 +102,7 @@ let wallCache = null;
 export function drawWall(ctx, tint = '#7a6450') {
   const W = GameConfig.width; const H = GameConfig.height;
   if (!wallCache || wallCache.tint !== tint) {
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
+    const c = platform.createCanvas(W, H);
     const g = c.getContext('2d');
     const grd = g.createLinearGradient(0, 0, 0, H);
     grd.addColorStop(0, shade(tint, 1.18)); grd.addColorStop(0.5, tint); grd.addColorStop(1, shade(tint, 0.62));

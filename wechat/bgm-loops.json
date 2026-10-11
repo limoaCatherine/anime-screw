@@ -1,0 +1,22 @@
+{
+  "bgm_gallery": {
+    "pre": 0.5,
+    "len": 80.0,
+    "post": 1.0
+  },
+  "bgm_roof": {
+    "pre": 0.5,
+    "len": 66.976735,
+    "post": 1.0
+  },
+  "bgm_greenhouse": {
+    "pre": 0.5,
+    "len": 72.0,
+    "post": 1.0
+  },
+  "bgm_tram": {
+    "pre": 0.5,
+    "len": 77.837846,
+    "post": 1.0
+  }
+}

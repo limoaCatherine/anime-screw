@@ -164,7 +164,7 @@ export class PuzzleSystem {
     this.box.settle();
     if (fully) {
       const jitter = this.opts.jitter ? (this.rng() - 0.5) * this.opts.jitter : 0;
-      this.boards.unpin(s, jitter);
+      this.boards.unpin(s, jitter, this.byId);
     }
     this.obstacles.onRemoved(s, pos, this.screws, (o) => this.posOf(o), fully);
     if (fully && this.hangers.has(s.id)) {

@@ -1,6 +1,7 @@
 // 板子外观：按材质 (橡木 / 胡桃木 / 紫铜 / 钢板 / 亚克力 / 玻璃) 程序生成纹理，
 // 每块板子只渲染一次到离屏画布 (局部坐标，2 倍分辨率)，之后每帧按刚体位置/角度贴图。
 import { makeRng } from '../systems/geom.js';
+import { platform } from '../platform/index.js';
 import { GameConfig } from '../config/GameConfig.js';
 
 const SS = 2;   // 超采样
@@ -31,8 +32,7 @@ export function renderBoard(b) {
   for (const p of pts) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
   const pad = 4;
   const w = Math.ceil(maxX - minX + pad * 2); const h = Math.ceil(maxY - minY + pad * 2);
-  const c = document.createElement('canvas');
-  c.width = w * SS; c.height = h * SS;
+  const c = platform.createCanvas(w * SS, h * SS);
   const g = c.getContext('2d');
   g.scale(SS, SS);
   g.translate(pad - minX, pad - minY);

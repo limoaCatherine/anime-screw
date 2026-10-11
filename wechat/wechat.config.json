@@ -1,0 +1,9 @@
+{
+  "_说明": "微信小游戏唯一配置文件：appid 与激励视频广告位 ID 都写在这里。改完运行 npm run build:wechat，会同步到 dist/project.config.json 与 dist/game-config.js。已构建好的「微信小游戏」文件夹里也可以直接改 game-config.js (广告位 ID) 和 project.config.json (appid)。广告位 ID 保持 YOUR_ 开头或留空 = 首发无广告版。",
+  "appid": "YOUR_APPID",
+  "rewardedAdUnitId": "YOUR_REWARDED_AD_UNIT_ID",
+  "shareTitle": "拧下螺丝，把画一块块拆出来",
+  "shareImageUrlId": "",
+  "projectname": "拆封绘卷",
+  "libVersion": "latest"
+}

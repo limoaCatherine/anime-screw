@@ -9,7 +9,10 @@
 //   fx:reveal    揭开画：粉红噪声扫频 + 闪光
 // 同一音效 60ms 内只响一次；同类每帧最多 2 个声部；每次随机 ±4% 音高。
 // 音量 = 总音量 × 音效音量；关掉"音效"开关时不出声。
+// 平台差异：网页 / 桌面版实时合成 (sfxMode 'synth')；抖音小游戏没有 WebAudio 合成，
+// 改放 tools/render_sfx.mjs 用同一套合成代码离线渲染出的小 mp3 (sfxMode 'sampled'，InnerAudioContext 池)。
 import { AudioConfig } from '../config/AudioConfig.js';
+import { platform } from '../platform/index.js';
 
 const PENTA = [0, 2, 4, 7, 9];
 const C5 = 523.25;
@@ -18,6 +21,59 @@ const comboFreq = (n) => {
   return C5 * Math.pow(2, (PENTA[k % 5] + 12 * Math.floor(k / 5)) / 12);
 };
 const MATERIAL_SOUND = { oak: 'wood', walnut: 'wood', copper: 'metal', steel: 'metal', acrylic: 'plastic', glass: 'glass' };
+const IMPACT_MAX_WEIGHT = 1.6;
+
+/** 预渲染音效的文件名 (同一音效按影响音色的参数分档) */
+export function sfxKey(name, o = {}) {
+  switch (name) {
+    case 'box': case 'boxFull': return `${name}_${Math.max(0, Math.min(AudioConfig.sfx.comboMax - 1, o.note | 0))}`;
+    case 'impact': return `impact_${o.kind || 'wood'}`;
+    case 'creak': return o.mat === 'oak' || o.mat === 'walnut' ? 'creak_wood' : 'creak_other';
+    case 'smash': return o.mat === 'glass' ? 'smash_glass' : 'smash_other';
+    case 'frost': return o.last ? 'frost_last' : 'frost';
+    case 'tick': return o.urgent ? 'tick_urgent' : 'tick';
+    default: return name;
+  }
+}
+
+/** 需要预渲染的全部变体：{ key, name, o, dur } */
+export function sfxVariants() {
+  const list = [];
+  const add = (name, o = {}, dur = 1.2) => list.push({ key: sfxKey(name, o), name, o, dur });
+  for (let n = 0; n < AudioConfig.sfx.comboMax; n++) { add('box', { note: n }, 0.8); add('boxFull', { note: n }, 1.0); }
+  for (const kind of ['wood', 'metal', 'plastic', 'glass']) add('impact', { kind, weight: IMPACT_MAX_WEIGHT }, 1.0);
+  add('creak', { mat: 'oak' }, 0.4); add('creak', { mat: 'steel' }, 0.4);
+  add('smash', { mat: 'glass' }, 0.7); add('smash', { mat: 'oak' }, 0.5);
+  add('frost', { last: true }, 0.6); add('frost', {}, 0.3);
+  add('tick', { urgent: true }, 0.15); add('tick', {}, 0.15);
+  const single = { click: 0.12, page: 0.3, unscrew: 0.35, blocked: 0.12, full: 0.4, hole: 0.6, chain: 0.45, unlock: 0.7,
+    boom: 0.85, fail: 0.85, revive: 0.65, undo: 0.35, rope: 0.5, shuffle: 0.35, item: 0.4, reveal: 1.6, win: 0.95 };
+  for (const [k, d] of Object.entries(single)) add(k, {}, d);
+  return list;
+}
+
+/** 抖音：InnerAudioContext 小池子 (LRU)，同一文件优先复用 */
+class Sampler {
+  constructor(size = 10) { this.size = size; this.pool = []; this.tick = 0; }
+  play(src, volume) {
+    let slot = this.pool.find((s) => s.src === src && (s.el.paused || s.el.ended));
+    if (!slot) {
+      if (this.pool.length < this.size) {
+        slot = { el: platform.createAudio(), src: null, used: 0 };
+        this.pool.push(slot);
+      } else {
+        slot = this.pool.reduce((a, b) => (a.used <= b.used ? a : b));
+      }
+    }
+    slot.used = ++this.tick;
+    try {
+      if (slot.src !== src) { slot.src = src; slot.el.src = src; } else if (slot.el.stop) slot.el.stop();
+      slot.el.volume = Math.max(0, Math.min(1, volume));
+      const pr = slot.el.play();
+      if (pr && pr.catch) pr.catch(() => {});
+    } catch (_) { /* ignore */ }
+  }
+}
 
 export class AudioSystem {
   constructor(events, save) {
@@ -35,6 +91,9 @@ export class AudioSystem {
     this.comboNote = 0;
     this.impactBuf = null;
     this.played = [];      // 调试/测试：最近播放的音效名
+    this.mode = platform.sfxMode;     // 'synth' | 'sampled'
+    this.sampler = null;
+    this.unlocked = false;
 
     events.on('input:down', () => this.unlock());
     events.on('input:key', () => this.unlock());
@@ -66,31 +125,43 @@ export class AudioSystem {
   }
 
   unlock() {
+    if (this.mode === 'sampled') {
+      if (!this.unlocked && platform.hasAudio()) { this.unlocked = true; this.sampler = new Sampler(10); }
+      return;
+    }
     try {
       if (!this.ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        this.ctx = new AC();
-        this.out = this.ctx.createGain();
+        const ctx = platform.createWebAudioContext();
+        if (!ctx) return;
+        this.attach(ctx, ctx.destination);
         this.applyVolume();
-        const comp = this.ctx.createDynamicsCompressor();
-        comp.threshold.value = -14; comp.ratio.value = 3;
-        this.out.connect(comp);
-        comp.connect(this.ctx.destination);
-        // 共享的短回声 (临时孔用)
-        this.echo = this.ctx.createDelay(0.5);
-        this.echo.delayTime.value = 0.085;
-        const fb = this.ctx.createGain(); fb.gain.value = 0.32;
-        const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
-        this.echo.connect(lp); lp.connect(fb); fb.connect(this.echo); lp.connect(this.out);
-        this.noiseBuf = this.makeNoise(1.5, false);
-        this.pinkBuf = this.makeNoise(2.0, true);
       }
+      this.unlocked = true;
       if (this.ctx.state === 'suspended') this.ctx.resume();
     } catch (err) {
       console.warn('[AudioSystem] 无法初始化音频:', err);
     }
   }
+
+  /** 搭合成图：out → 压缩器 → dest，外加临时孔用的短回声。tools/render_sfx.mjs 用 OfflineAudioContext 调同一个方法 */
+  attach(ctx, dest) {
+    this.ctx = ctx;
+    this.out = ctx.createGain();
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 3;
+    this.out.connect(comp);
+    comp.connect(dest);
+    this.echo = ctx.createDelay(0.5);
+    this.echo.delayTime.value = 0.085;
+    const fb = ctx.createGain(); fb.gain.value = 0.32;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
+    this.echo.connect(lp); lp.connect(fb); fb.connect(this.echo); lp.connect(this.out);
+    this.noiseBuf = this.makeNoise(1.5, false);
+    this.pinkBuf = this.makeNoise(2.0, true);
+  }
+
+  /** 规则用的时钟 (秒) */
+  clock() { return this.ctx ? this.ctx.currentTime : platform.now() / 1000; }
 
   makeNoise(sec, pink) {
     const n = Math.floor(this.ctx.sampleRate * sec);
@@ -112,7 +183,10 @@ export class AudioSystem {
     if (this.out) this.out.gain.setTargetAtTime(this.enabled ? this.volume * this.master * 4 : 0, this.ctx.currentTime, 0.02);
   }
 
-  get ready() { return !!(this.ctx && this.enabled && this.master > 0); }
+  get ready() {
+    if (this.mode === 'sampled') return !!(this.sampler && this.enabled && this.master > 0);
+    return !!(this.ctx && this.enabled && this.master > 0);
+  }
 
   update() { this.frameCount = {}; this.flushImpact(); }
 
@@ -154,8 +228,8 @@ export class AudioSystem {
 
   // ------------------------------------------------------------ 规则
   onLand(e) {
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
+    if (!this.unlocked) return;
+    const now = this.clock();
     if (e.kind === 'box') {
       this.combo = now - this.lastBoxTime <= AudioConfig.sfx.comboWindow ? this.combo + 1 : 0;
       this.lastBoxTime = now;
@@ -187,15 +261,24 @@ export class AudioSystem {
 
   play(name, o = {}) {
     if (!this.ready) return;
-    const now = this.ctx.currentTime;
+    const now = this.clock();
     const key = name === 'impact' ? `impact_${o.kind}` : name;
     if (!o.force && this.last[key] != null && now - this.last[key] < AudioConfig.sfx.rateLimit) return;
     if ((this.frameCount[name] || 0) >= AudioConfig.sfx.maxPerFrame) return;
     this.last[key] = now;
     this.frameCount[name] = (this.frameCount[name] || 0) + 1;
     this.played.push(name); if (this.played.length > 40) this.played.shift();
-    const j = 1 + (Math.random() * 2 - 1) * AudioConfig.sfx.pitchJitter;
+    if (this.mode === 'sampled') {
+      // 预渲染文件已含音效音量 (sfxVolume × 4)；这里只乘总音量，落地声按重量再缩放
+      const w = name === 'impact' ? Math.min(1, (o.weight || 1) / IMPACT_MAX_WEIGHT) : 1;
+      this.sampler.play(`assets/sfx/${sfxKey(name, o)}.mp3`, this.master * w);
+      return;
+    }
+    this.synth(name, o, 1 + (Math.random() * 2 - 1) * AudioConfig.sfx.pitchJitter);
+  }
 
+  /** 合成一个音效 (j = 音高抖动系数；离线渲染时传 1) */
+  synth(name, o = {}, j = 1) {
     switch (name) {
       case 'click':
         this.tone({ freq: 1100 * j, freqEnd: 1500 * j, dur: 0.06, vol: 0.12, attack: 0.002 });
