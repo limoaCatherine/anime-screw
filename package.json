@@ -1,0 +1,36 @@
+{
+  "name": "anime-screw",
+  "version": "1.1.0",
+  "description": "《拆封绘卷》AnimeScrew - HTML5 + Matter.js 二次元拧螺丝小游戏",
+  "main": "src/main.js",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "serve": "node tools/serve.js 8766",
+    "start": "npm run build && node tools/serve.js 8766",
+    "vendor": "node -e \"require('fs').copyFileSync('node_modules/matter-js/build/matter.min.js','vendor/matter.min.js')\"",
+    "levels": "node tools/design_levels.mjs",
+    "verify": "node tools/verify_levels.mjs",
+    "test": "node tools/smoke_test.mjs",
+    "test:play": "node tools/playthrough.mjs",
+    "test:desktop": "node tools/test_desktop.mjs",
+    "voices": "node tools/generate_voices.mjs",
+    "bgm": "python3 tools/compose_bgm.py",
+    "art": "python3 tools/make_art.py",
+    "icons": "python3 tools/make_icons.py",
+    "desktop": "npm run build && electron desktop/main.js",
+    "pack:win": "node tools/package.mjs win",
+    "pack:linux": "node tools/package.mjs linux"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^44.7.0",
+    "esbuild": "^0.28.2",
+    "matter-js": "^0.19.0",
+    "playwright": "^1.64.0",
+    "resedit": "^3.1.0"
+  },
+  "private": true,
+  "type": "commonjs",
+  "author": "上海盖姆艾尔网络科技有限公司"
+}
